@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MEGA CALC 9000</title>
+<meta name="description" content="A free calculator. The arithmetic is free. The answers are not.">
+<style>
+/* ============================================================
+   MEGA CALC 9000
+   Every animation here has a period of >= 400ms (< 3Hz) and no
+   full-viewport luminance strobing, to stay under the
+   photosensitive-seizure threshold. Loud, not dangerous.
+   ============================================================ */
+
+:root {
+  --pink:   #ff2d95;
+  --cyan:   #00f0ff;
+  --lime:   #b6ff00;
+  --yellow: #ffe600;
+  --purple: #9d00ff;
+  --orange: #ff7a00;
+  --ink:    #14001f;
+  --paper:  #fff;
+  --font: "Comic Sans MS", "Comic Neue", "Chalkboard SE", "Segoe Print", cursive, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font);
+  color: var(--ink);
+  background: var(--purple);
+  overflow-x: hidden;
+  position: relative;
+  padding: 0 16px;
+}
+
+/* ---------- animated background ---------- */
+
+.bg {
+  position: fixed;
+  inset: -20%;
+  z-index: -2;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      var(--pink)   0 60px,
+      var(--orange) 60px 120px,
+      var(--yellow) 120px 180px,
+      var(--lime)   180px 240px,
+      var(--cyan)   240px 300px,
+      var(--purple) 300px 360px
+    );
+  background-size: 200% 200%;
+  animation: slide 9s linear infinite;
+}
+
+.bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, transparent 0 4px, rgba(255,255,255,.22) 4px 8px, transparent 8px);
+  background-size: 34px 34px;
+  animation: drift 7s linear infinite;
+}
+
+@keyframes slide { to { background-position: 200% 0; } }
+@keyframes drift { to { background-position: 34px 34px; } }
+
+/* ---------- marquees ---------- */
+
+.marquee {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  overflow: hidden;
+  white-space: nowrap;
+  background: var(--ink);
+  color: var(--lime);
+  font-size: clamp(.7rem, 2.4vw, .95rem);
+  font-weight: bold;
+  letter-spacing: .12em;
+  padding: 5px 0;
+  border-block: 3px solid var(--yellow);
+  pointer-events: none;
+}
+
+.marquee--top    { top: 0; }
+.marquee--bottom { bottom: 0; color: var(--pink); }
+
+.marquee span {
+  display: inline-block;
+  padding-right: 2rem;
+  animation: scroll-left 22s linear infinite;
+}
+
+.marquee--bottom span { animation: scroll-right 26s linear infinite; }
+
+@keyframes scroll-left  { from { transform: translateX(0);     } to { transform: translateX(-50%); } }
+@keyframes scroll-right { from { transform: translateX(-50%);  } to { transform: translateX(0);    } }
+
+/* ---------- layout ---------- */
+
+.screen {
+  position: relative;
+  z-index: 10;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 58px 0 66px;
+}
+
+.screen[hidden] { display: none; }
+.screen:focus { outline: none; }
+
+.title {
+  margin: 0 0 4px;
+  text-align: center;
+  font-size: clamp(2rem, 9vw, 3.4rem);
+  line-height: 1.05;
+  color: var(--yellow);
+  -webkit-text-stroke: 2px var(--ink);
+  text-shadow:
+     3px  3px 0 var(--pink),
+     6px  6px 0 var(--cyan),
+     9px  9px 0 var(--purple);
+  transform: rotate(-2.5deg);
+  animation: bob 3.4s ease-in-out infinite;
+}
+
+.subtitle {
+  margin: 0 0 14px;
+  text-align: center;
+  font-size: clamp(.8rem, 3.4vw, 1rem);
+  color: var(--paper);
+  text-shadow: 2px 2px 0 var(--ink);
+  transform: rotate(1.4deg);
+}
+
+@keyframes bob {
+  0%, 100% { transform: rotate(-2.5deg) translateY(0); }
+  50%      { transform: rotate(2deg)    translateY(-7px); }
+}
+
+.badge {
+  display: block;
+  width: fit-content;
+  margin: 0 auto 14px;
+  padding: 6px 14px;
+  background: var(--ink);
+  color: var(--paper);
+  border: 3px solid var(--lime);
+  border-radius: 999px;
+  font-size: clamp(.72rem, 3vw, .88rem);
+  text-align: center;
+  animation: throb 1.8s ease-in-out infinite;
+}
+
+@keyframes throb {
+  0%, 100% { transform: scale(1)    rotate(-1deg); }
+  50%      { transform: scale(1.06) rotate(1deg); }
+}
+
+/* ---------- calculator ---------- */
+
+.calc {
+  background: var(--ink);
+  border: 6px solid var(--yellow);
+  border-radius: 22px;
+  padding: 16px;
+  box-shadow: 10px 10px 0 var(--pink), 20px 20px 0 var(--cyan);
+  transform: rotate(-1deg);
+  animation: tilt 6.5s ease-in-out infinite;
+}
+
+@keyframes tilt {
+  0%, 100% { transform: rotate(-1deg); }
+  50%      { transform: rotate(1.1deg); }
+}
+
+.display {
+  display: block;
+  width: 100%;
+  min-height: 84px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  background: #001b10;
+  border: 4px solid var(--lime);
+  border-radius: 12px;
+  color: var(--lime);
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: clamp(1.8rem, 8vw, 3rem);
+  font-weight: bold;
+  text-align: right;
+  overflow-wrap: anywhere;
+  text-shadow: 0 0 10px var(--lime);
+  animation: glow 2.6s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: inset 0 0 18px rgba(182,255,0,.28); }
+  50%      { box-shadow: inset 0 0 34px rgba(182,255,0,.62); }
+}
+
+.expr {
+  display: block;
+  font-size: clamp(.7rem, 3vw, .9rem);
+  color: var(--cyan);
+  text-align: right;
+  min-height: 1.2em;
+  margin-bottom: 4px;
+  opacity: .85;
+  text-shadow: none;
+}
+
+.pad {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 9px;
+}
+
+.key {
+  font-family: var(--font);
+  font-size: clamp(1.1rem, 5.5vw, 1.7rem);
+  font-weight: bold;
+  padding: 14px 4px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 4px solid var(--ink);
+  border-radius: 14px;
+  cursor: pointer;
+  animation: wiggle 1.9s ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+  transition: transform .08s ease-out;
+}
+
+.key:hover  { filter: invert(1); }
+.key:active { transform: scale(.9) rotate(6deg); }
+
+.key:focus-visible {
+  outline: 5px solid var(--ink);
+  outline-offset: 3px;
+  background: var(--yellow);
+  animation: none;
+}
+
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-3deg) scale(1); }
+  50%      { transform: rotate(3deg)  scale(1.04); }
+}
+
+.key--digit { background: var(--cyan); }
+.key--op    { background: var(--orange); }
+.key--clear { background: var(--pink); color: var(--paper); }
+
+.key--equals {
+  grid-column: 1 / -1;
+  background: var(--lime);
+  font-size: clamp(1.4rem, 7vw, 2.2rem);
+  padding: 18px 4px;
+  animation: pulse-eq 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-eq {
+  0%, 100% { transform: scale(1)    rotate(0deg); box-shadow: 0 0 0 0 rgba(255,230,0,.9); }
+  50%      { transform: scale(1.04) rotate(-1deg); box-shadow: 0 0 0 14px rgba(255,230,0,0); }
+}
+
+/* ---------- misc calc chrome ---------- */
+
+.chrome {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.mini-btn {
+  font-family: var(--font);
+  font-size: clamp(.68rem, 2.8vw, .82rem);
+  font-weight: bold;
+  padding: 8px 12px;
+  background: var(--yellow);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.mini-btn:focus-visible { outline: 4px solid var(--paper); outline-offset: 2px; }
+.mini-btn[aria-pressed="true"] { background: var(--lime); }
+
+.visitor {
+  margin-top: 12px;
+  text-align: center;
+  font-size: clamp(.68rem, 2.8vw, .82rem);
+  color: var(--paper);
+  text-shadow: 1px 1px 0 var(--ink);
+}
+
+.shame {
+  display: none;
+  margin: 0 auto 14px;
+  padding: 8px 12px;
+  max-width: 460px;
+  background: var(--ink);
+  color: var(--yellow);
+  border: 3px dashed var(--pink);
+  border-radius: 10px;
+  text-align: center;
+  font-size: clamp(.7rem, 3vw, .85rem);
+}
+
+body.free-tier .shame { display: block; }
+body.free-tier .calc  { box-shadow: 10px 10px 0 var(--lime), 20px 20px 0 var(--orange), 30px 30px 0 var(--pink); }
+
+/* ---------- paywall ---------- */
+
+.paywall-head {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.paywall-head h2 {
+  margin: 0 0 8px;
+  font-size: clamp(1.6rem, 7.5vw, 2.6rem);
+  color: var(--paper);
+  -webkit-text-stroke: 2px var(--ink);
+  text-shadow: 4px 4px 0 var(--pink);
+  transform: rotate(-1.5deg);
+}
+
+.locked {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 132px;
+  margin: 0 auto 10px;
+  max-width: 420px;
+  background: #001b10;
+  border: 5px solid var(--lime);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.locked__value {
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: clamp(2.6rem, 13vw, 4.4rem);
+  font-weight: bold;
+  color: var(--lime);
+  text-shadow: 0 0 18px rgba(182,255,0,.55);
+  filter: blur(6px);
+  user-select: none;
+}
+
+.locked__overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: clamp(.95rem, 4.6vw, 1.4rem);
+  font-weight: bold;
+  color: var(--paper);
+  background: rgba(20,0,31,.26);
+  text-shadow: 0 2px 6px var(--ink), 2px 2px 0 var(--ink);
+  align-content: end;
+  padding-bottom: 10px;
+}
+
+.countdown {
+  text-align: center;
+  font-size: clamp(.75rem, 3.2vw, .95rem);
+  color: var(--ink);
+  background: var(--yellow);
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  padding: 6px 12px;
+  width: fit-content;
+  margin: 0 auto 20px;
+  animation: throb 2.2s ease-in-out infinite;
+}
+
+.tiers {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.tier {
+  position: relative;
+  background: var(--paper);
+  border: 5px solid var(--ink);
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 8px 8px 0 var(--purple);
+}
+
+.tier--pro {
+  border-color: var(--pink);
+  box-shadow: 8px 8px 0 var(--cyan);
+  animation: tilt 5.5s ease-in-out infinite;
+}
+
+.tier--enterprise {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--lime);
+  box-shadow: 8px 8px 0 var(--orange);
+}
+
+.tier h3 {
+  margin: 0 0 6px;
+  font-size: clamp(1.05rem, 4.6vw, 1.35rem);
+  color: var(--purple);
+}
+
+.tier--enterprise h3 { color: var(--lime); }
+
+.tier__price {
+  font-size: clamp(1.4rem, 6.5vw, 2.1rem);
+  font-weight: bold;
+  color: var(--pink);
+  margin: 0 0 4px;
+  overflow-wrap: anywhere;
+}
+
+.tier--enterprise .tier__price {
+  color: var(--yellow);
+  font-size: clamp(1rem, 4.4vw, 1.4rem);
+  font-family: "Courier New", ui-monospace, monospace;
+}
+
+.tier__cadence {
+  font-size: clamp(.68rem, 2.9vw, .82rem);
+  margin: 0 0 10px;
+  opacity: .8;
+}
+
+.tier ul {
+  margin: 0 0 14px;
+  padding-left: 1.2em;
+  font-size: clamp(.72rem, 3.1vw, .88rem);
+  line-height: 1.55;
+}
+
+.flag {
+  position: absolute;
+  top: -14px;
+  right: 10px;
+  background: var(--lime);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: clamp(.62rem, 2.6vw, .74rem);
+  font-weight: bold;
+  transform: rotate(6deg);
+  animation: throb 1.6s ease-in-out infinite;
+}
+
+.buy {
+  display: block;
+  width: 100%;
+  font-family: var(--font);
+  font-size: clamp(.9rem, 4vw, 1.15rem);
+  font-weight: bold;
+  padding: 13px 8px;
+  background: var(--lime);
+  color: var(--ink);
+  border: 4px solid var(--ink);
+  border-radius: 999px;
+  cursor: pointer;
+  animation: pulse-eq 1.7s ease-in-out infinite;
+}
+
+.buy:focus-visible { outline: 5px solid var(--paper); outline-offset: 3px; animation: none; }
+
+.fineprint {
+  max-width: 560px;
+  margin: 0 auto 18px;
+  padding: 10px 12px;
+  background: rgba(20,0,31,.72);
+  color: var(--paper);
+  border-radius: 10px;
+  font-size: clamp(.6rem, 2.5vw, .72rem);
+  line-height: 1.6;
+  opacity: .92;
+}
+
+/* the escape hatch, hostile by design */
+.no-thanks {
+  display: inline-block;
+  margin: 4px auto 0;
+  padding: 3px 5px;
+  font-family: var(--font);
+  font-size: 7px;
+  line-height: 1.2;
+  color: #6b5f74;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: default;
+  z-index: 70;
+}
+
+.no-thanks:focus-visible {
+  outline: 4px solid var(--paper);
+  outline-offset: 3px;
+  font-size: 14px;
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.no-thanks-wrap { text-align: center; min-height: 34px; }
+
+/* ---------- modals ---------- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(20,0,31,.82);
+}
+
+.modal-backdrop[hidden] { display: none; }
+
+.modal {
+  width: min(430px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--paper);
+  border: 6px solid var(--pink);
+  border-radius: 20px;
+  padding: 22px 20px;
+  text-align: center;
+  box-shadow: 0 0 0 6px var(--ink), 12px 12px 0 var(--cyan);
+  animation: pop-in .42s cubic-bezier(.2,1.5,.4,1);
+}
+
+@keyframes pop-in {
+  from { transform: scale(.72) rotate(-5deg); opacity: 0; }
+  to   { transform: scale(1)   rotate(0deg);  opacity: 1; }
+}
+
+.modal h2 {
+  margin: 0 0 10px;
+  font-size: clamp(1.25rem, 6vw, 1.75rem);
+  color: var(--purple);
+}
+
+.modal p {
+  margin: 0 0 8px;
+  font-size: clamp(.82rem, 3.5vw, .98rem);
+  line-height: 1.5;
+}
+
+.modal .tiny {
+  font-size: clamp(.58rem, 2.4vw, .68rem);
+  opacity: .7;
+  margin-bottom: 14px;
+}
+
+.modal__stay {
+  display: block;
+  width: 100%;
+  font-family: var(--font);
+  font-size: clamp(1rem, 4.6vw, 1.3rem);
+  font-weight: bold;
+  padding: 16px 10px;
+  margin-bottom: 12px;
+  background: var(--lime);
+  color: var(--ink);
+  border: 5px solid var(--ink);
+  border-radius: 999px;
+  cursor: pointer;
+  animation: throb 1.9s ease-in-out infinite;
+}
+
+.modal__leave {
+  font-family: var(--font);
+  font-size: 9px;
+  padding: 4px 6px;
+  color: #7a7080;
+  background: none;
+  border: none;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.modal__stay:focus-visible,
+.modal__leave:focus-visible {
+  outline: 4px solid var(--purple);
+  outline-offset: 3px;
+  animation: none;
+}
+
+.modal__leave:focus-visible { font-size: 15px; color: var(--ink); }
+
+.bar {
+  height: 24px;
+  margin: 8px 0 10px;
+  background: #e6e0ea;
+  border: 4px solid var(--ink);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bar__fill {
+  height: 100%;
+  width: 0%;
+  background: repeating-linear-gradient(45deg, var(--pink) 0 12px, var(--purple) 12px 24px);
+  transition: width .8s ease-in-out;
+}
+
+.bar__label {
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: clamp(.8rem, 3.4vw, 1rem);
+  font-weight: bold;
+}
+
+/* ---------- particles ---------- */
+
+.particle {
+  position: fixed;
+  z-index: 60;
+  font-size: 1.5rem;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.particle.pop { animation: pop 900ms ease-out forwards; }
+
+@keyframes pop {
+  0% {
+    transform: translate(-50%, -50%) scale(.4) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.5) rotate(var(--rot));
+    opacity: 0;
+  }
+}
+
+/* the one piece of restraint on this page */
+.back-to-site {
+  position: fixed;
+  top: 36px;
+  left: 10px;
+  z-index: 45;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--paper);
+  background: rgba(20, 0, 31, .78);
+  border: 2px solid rgba(255, 255, 255, .34);
+  border-radius: 999px;
+  padding: 5px 11px;
+  text-decoration: none;
+}
+
+.back-to-site:hover { background: var(--ink); }
+
+.back-to-site:focus-visible {
+  outline: 4px solid var(--paper);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ============================================================
+   CALM MODE
+   A real alternative, not a token one. Every joke survives as
+   text; only the motion goes away.
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .bg {
+    background: linear-gradient(160deg, var(--purple), var(--pink) 45%, var(--orange));
+  }
+
+  .bg::after { display: none; }
+
+  .marquee span { padding-right: 0; }
+
+  .title, .subtitle, .calc, .tier--pro, .flag, .paywall-head h2 {
+    transform: none;
+  }
+
+  .key:hover { filter: none; background: var(--yellow); }
+
+  .no-thanks {
+    font-size: 15px;
+    color: var(--ink);
+    background: var(--paper);
+    border: 3px solid var(--ink);
+    border-radius: 999px;
+    padding: 8px 16px;
+    cursor: pointer;
+  }
+
+  .modal__leave {
+    font-size: 15px;
+    color: var(--ink);
+  }
+
+  .particle { display: none; }
+}
+</style>
+</head>
+<body class="mode-calc">
+
+<a class="back-to-site" href="index.html">&#9664; MEGACALC&trade;</a>
+
+<div class="bg" aria-hidden="true"></div>
+
+<div class="marquee marquee--top" aria-hidden="true">
+  <span>&#11088; PREMIUM MATH &#11088; ACT NOW &#11088; NUMBERS GOING FAST &#11088; 9 OUT OF 10 MATHEMATICIANS AGREE &#11088; PREMIUM MATH &#11088; ACT NOW &#11088; NUMBERS GOING FAST &#11088; 9 OUT OF 10 MATHEMATICIANS AGREE &#11088;&nbsp;</span>
+</div>
+
+<div class="marquee marquee--bottom" aria-hidden="true">
+  <span>&#128293; LIMITED TIME &#128293; OFFER ENDS EVENTUALLY &#128293; ADDITION SOLD SEPARATELY &#128293; LIMITED TIME &#128293; OFFER ENDS EVENTUALLY &#128293; ADDITION SOLD SEPARATELY &#128293;&nbsp;</span>
+</div>
+
+<!-- ============ SCREEN 1: THE CALCULATOR ============ -->
+<main class="screen" id="calc-screen">
+
+  <h1 class="title">MEGA&nbsp;CALC&nbsp;9000</h1>
+  <p class="subtitle">the last calculator you will ever need to pay for&trade;</p>
+
+  <p class="badge">&#128308; LIVE &mdash; <span id="live-count">12,847</span> people are doing math right now</p>
+
+  <p class="shame">&#129296; FREE TIER &mdash; ads enabled, answers disabled</p>
+
+  <div class="calc">
+    <output class="display" id="display" aria-live="polite" aria-label="Calculator display">
+      <span class="expr" id="expr"></span>
+      <span id="display-value">0</span>
+    </output>
+
+    <div class="pad">
+      <button class="key key--digit" data-digit="7">7</button>
+      <button class="key key--digit" data-digit="8">8</button>
+      <button class="key key--digit" data-digit="9">9</button>
+      <button class="key key--op" data-op="/" aria-label="divide">&divide;</button>
+
+      <button class="key key--digit" data-digit="4">4</button>
+      <button class="key key--digit" data-digit="5">5</button>
+      <button class="key key--digit" data-digit="6">6</button>
+      <button class="key key--op" data-op="*" aria-label="multiply">&times;</button>
+
+      <button class="key key--digit" data-digit="1">1</button>
+      <button class="key key--digit" data-digit="2">2</button>
+      <button class="key key--digit" data-digit="3">3</button>
+      <button class="key key--op" data-op="-" aria-label="subtract">&minus;</button>
+
+      <button class="key" data-action="dot" aria-label="decimal point">.</button>
+      <button class="key key--digit" data-digit="0">0</button>
+      <button class="key key--clear" data-action="clear" aria-label="clear">C</button>
+      <button class="key key--op" data-op="+" aria-label="add">+</button>
+
+      <button class="key key--equals" data-action="equals" aria-label="equals">=</button>
+    </div>
+  </div>
+
+  <div class="chrome">
+    <button class="mini-btn" id="mute-toggle" aria-pressed="false">&#128266; UNMUTE FOR THE FULL EXPERIENCE</button>
+  </div>
+
+  <p class="visitor">you are visitor #<span id="visitor">0000000</span> &bull; this site is best viewed in all browsers at once</p>
+</main>
+
+<!-- ============ SCREEN 2: THE PAYWALL ============ -->
+<section class="screen" id="paywall-screen" hidden tabindex="-1" aria-labelledby="paywall-title">
+
+  <div class="paywall-head">
+    <h2 id="paywall-title">&#128274; YOUR ANSWER IS READY!</h2>
+    <p class="subtitle">We did the math. Now let's talk about you.</p>
+  </div>
+
+  <div class="locked">
+    <div class="locked__value" id="locked-value" aria-hidden="true">0</div>
+    <div class="locked__overlay" aria-hidden="true">RESULT LOCKED &#128274;</div>
+  </div>
+  <p class="sr-only" id="locked-sr">Your result has been calculated and locked behind a paywall.</p>
+
+  <p class="countdown">&#9203; This exclusive offer expires in <span id="countdown">00:00</span></p>
+
+  <div class="tiers">
+
+    <div class="tier">
+      <h3>CASUAL ARITHMETIC</h3>
+      <p class="tier__price">$499.99<span style="font-size:.5em">/day</span></p>
+      <p class="tier__cadence">billed every 4 hours, in advance, forever</p>
+      <ul>
+        <li>Unlocks the <strong>+</strong> operator</li>
+        <li>Other operators sold separately</li>
+        <li>Results delivered within 6&ndash;8 business weeks</li>
+        <li>Up to <strong>3 digits</strong> per answer (4th digit: $89/ea)</li>
+      </ul>
+      <button class="buy" data-buy="casual">START MY 0-DAY FREE TRIAL</button>
+    </div>
+
+    <div class="tier tier--pro">
+      <span class="flag">MOST POPULAR!</span>
+      <h3>MATHEMAGICIAN PRO</h3>
+      <p class="tier__price">$9,999.99<span style="font-size:.5em">/week</span></p>
+      <p class="tier__cadence">plus 14.7% of your lifetime gross earnings &bull; auto-renews every 11 seconds</p>
+      <ul>
+        <li>All four operators (subject to availability)</li>
+        <li>The decimal point, on weekdays</li>
+        <li>Priority access to the number <strong>7</strong></li>
+        <li>Cancel anytime* <em>(*by fax, in person, in Liechtenstein)</em></li>
+      </ul>
+      <button class="buy" data-buy="pro">YES! I LOVE NUMBERS THAT MUCH</button>
+    </div>
+
+    <div class="tier tier--enterprise">
+      <h3>ENTERPRISE</h3>
+      <p class="tier__price">$((47,281 &times; 3.5) &divide; 0.07) + 19.99</p>
+      <p class="tier__cadence">
+        per seat, per quarter. To determine your exact price, simply evaluate
+        the expression above using a calculator. Calculator sold separately.
+      </p>
+      <ul>
+        <li>Unlimited answers**</li>
+        <li>** up to 2 answers</li>
+        <li>A dedicated account manager named Gary</li>
+        <li>Gary does not know math</li>
+      </ul>
+      <button class="buy" data-buy="enterprise">CONTACT SALES (GARY)</button>
+    </div>
+
+  </div>
+
+  <p class="fineprint">
+    By pressing any button, scrolling, blinking, or existing near this page you agree to the Terms.
+    Subscription auto-renews in perpetuity and across reincarnations. Prices shown exclude tax, tip,
+    surcharge, convenience fee, inconvenience fee, and the arithmetic levy. Answers are provided
+    &ldquo;as-is&rdquo; and may be wrong. Refunds are processed by carrier pigeon within 400 business years.
+    Governing jurisdiction is the Moon. Cancellation requires a notarized fax sent to a machine we
+    have not owned since 2004. The number 8 is licensed, not sold. We reserve the right to change
+    these terms while you are reading them. We just did it again.
+  </p>
+
+  <div class="no-thanks-wrap">
+    <button class="no-thanks" id="no-thanks">no thanks, i'll estimate</button>
+  </div>
+</section>
+
+<div class="modal-backdrop" id="modal-backdrop" hidden>
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"></div>
+</div>
+
+<div id="particles" aria-hidden="true"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------------------------------------------------------
+     Motion preference. Read live via .matches so a mid-session
+     OS change is honoured without a reload.
+     --------------------------------------------------------- */
+  var motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+  function calm() { return motionQuery.matches; }
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  var displayValue = $("display-value");
+  var exprEl       = $("expr");
+  var calcScreen   = $("calc-screen");
+  var paywall      = $("paywall-screen");
+  var lockedValue  = $("locked-value");
+  var backdrop     = $("modal-backdrop");
+  var modal        = $("modal");
+  var noThanks     = $("no-thanks");
+
+  /* =========================================================
+     1. THE CALCULATOR  (it genuinely works)
+     ========================================================= */
+
+  var current        = "0";
+  var accumulator    = null;
+  var pendingOp      = null;
+  var awaitingOperand = false;
+  var errored        = false;
+
+  var OP_GLYPH = { "+": "+", "-": "−", "*": "×", "/": "÷" };
+
+  function compute(a, b, op) {
+    switch (op) {
+      case "+": return a + b;
+      case "-": return a - b;
+      case "*": return a * b;
+      case "/": return b === 0 ? null : a / b;
+    }
+    return b;
+  }
+
+  function format(n) {
+    if (n === null || !isFinite(n)) return "NOPE";
+    // Kill float dust: 0.1 + 0.2 should read 0.3, not 0.30000000000000004.
+    var rounded = Math.round((n + Number.EPSILON) * 1e10) / 1e10;
+    if (Math.abs(rounded) >= 1e12) return rounded.toExponential(4);
+    return String(rounded);
+  }
+
+  function render() {
+    displayValue.textContent = current;
+    var parts = "";
+    if (accumulator !== null && pendingOp) {
+      parts = format(accumulator) + " " + OP_GLYPH[pendingOp];
+    }
+    exprEl.textContent = parts;
+  }
+
+  function reset() {
+    current = "0";
+    accumulator = null;
+    pendingOp = null;
+    awaitingOperand = false;
+    errored = false;
+    render();
+  }
+
+  function clearError() {
+    if (!errored) return;
+    current = "0";
+    accumulator = null;
+    pendingOp = null;
+    awaitingOperand = false;
+    errored = false;
+  }
+
+  function inputDigit(d) {
+    clearError();
+    if (awaitingOperand || current === "\u{1F512}") {
+      current = d;
+      awaitingOperand = false;
+    } else if (current === "0") {
+      current = d;
+    } else if (current.replace("-", "").replace(".", "").length < 12) {
+      current += d;
+    }
+    render();
+  }
+
+  function inputDot() {
+    clearError();
+    if (awaitingOperand || current === "\u{1F512}") {
+      current = "0.";
+      awaitingOperand = false;
+    } else if (current.indexOf(".") === -1) {
+      current += ".";
+    }
+    render();
+  }
+
+  function inputOp(op) {
+    clearError();
+    if (current === "\u{1F512}") current = "0";
+    var value = parseFloat(current);
+    if (isNaN(value)) value = 0;
+
+    if (pendingOp !== null && !awaitingOperand) {
+      var result = compute(accumulator, value, pendingOp);
+      if (result === null) { fail(); return; }
+      accumulator = result;
+      current = format(result);
+    } else {
+      accumulator = value;
+    }
+    pendingOp = op;
+    awaitingOperand = true;
+    render();
+  }
+
+  function fail() {
+    errored = true;
+    current = "NOPE";
+    accumulator = null;
+    pendingOp = null;
+    awaitingOperand = false;
+    render();
+  }
+
+  function equals() {
+    if (errored) return;
+    if (current === "\u{1F512}") current = "0";
+    var value = parseFloat(current);
+    if (isNaN(value)) value = 0;
+
+    var result = pendingOp !== null ? compute(accumulator, value, pendingOp) : value;
+    if (result === null) { fail(); return; }
+
+    // The answer is real. You're just not getting it.
+    showPaywall(format(result));
+
+    accumulator = null;
+    pendingOp = null;
+    awaitingOperand = false;
+    current = "\u{1F512}";
+    render();
+  }
+
+  /* =========================================================
+     2. PARTICLES  (fixed-size pool: the DOM never grows)
+     ========================================================= */
+
+  var EMOJI = ["✨","\u{1F4A5}","\u{1F308}","⭐","\u{1F525}","\u{1F389}","\u{1F4AF}","\u{1F92F}","\u{1F984}","\u{1F4B8}"];
+  var POOL_SIZE = 48;
+  var pool = [];
+  var poolIndex = 0;
+
+  (function buildPool() {
+    var layer = $("particles");
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < POOL_SIZE; i++) {
+      var el = document.createElement("span");
+      el.className = "particle";
+      frag.appendChild(el);
+      pool.push(el);
+    }
+    layer.appendChild(frag);
+  })();
+
+  function burst(x, y) {
+    if (calm()) return;
+    for (var i = 0; i < 7; i++) {
+      var el = pool[poolIndex % POOL_SIZE];
+      poolIndex++;
+      var angle = Math.random() * Math.PI * 2;
+      var dist  = 70 + Math.random() * 110;
+      el.textContent = EMOJI[(Math.random() * EMOJI.length) | 0];
+      el.style.left = x + "px";
+      el.style.top  = y + "px";
+      el.style.setProperty("--dx", (Math.cos(angle) * dist).toFixed(1) + "px");
+      el.style.setProperty("--dy", (Math.sin(angle) * dist).toFixed(1) + "px");
+      el.style.setProperty("--rot", ((Math.random() * 720) - 360).toFixed(0) + "deg");
+      el.classList.remove("pop");
+      void el.offsetWidth;           // force reflow so the animation restarts
+      el.classList.add("pop");
+    }
+  }
+
+  /* =========================================================
+     3. AUDIO  (muted by default; context built on first gesture)
+     ========================================================= */
+
+  var muted = true;
+  var audioCtx = null;
+
+  function blip(freq) {
+    if (muted) return;
+    try {
+      if (!audioCtx) {
+        var Ctor = window.AudioContext || window.webkitAudioContext;
+        if (!Ctor) return;
+        audioCtx = new Ctor();
+      }
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      var osc  = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = "square";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.12);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.13);
+    } catch (e) { /* audio is decoration; never let it break the calculator */ }
+  }
+
+  var muteToggle = $("mute-toggle");
+  muteToggle.addEventListener("click", function () {
+    muted = !muted;
+    muteToggle.setAttribute("aria-pressed", String(!muted));
+    muteToggle.innerHTML = muted
+      ? "\u{1F50A} UNMUTE FOR THE FULL EXPERIENCE"
+      : "\u{1F507} ok that was a mistake, mute it";
+    if (!muted) blip(660);
+  });
+
+  /* =========================================================
+     4. KEYPAD WIRING
+     ========================================================= */
+
+  document.querySelectorAll(".key").forEach(function (key, i) {
+    key.style.setProperty("--delay", (-(i * 0.17)).toFixed(2) + "s");
+
+    key.addEventListener("click", function (ev) {
+      var rect = key.getBoundingClientRect();
+      burst(rect.left + rect.width / 2, rect.top + rect.height / 2);
+
+      if (key.dataset.digit !== undefined) {
+        blip(320 + Number(key.dataset.digit) * 45);
+        inputDigit(key.dataset.digit);
+      } else if (key.dataset.op !== undefined) {
+        blip(240);
+        inputOp(key.dataset.op);
+      } else if (key.dataset.action === "dot") {
+        blip(400);
+        inputDot();
+      } else if (key.dataset.action === "clear") {
+        blip(180);
+        reset();
+      } else if (key.dataset.action === "equals") {
+        blip(880);
+        equals();
+      }
+      ev.preventDefault();
+    });
+  });
+
+  /* =========================================================
+     5. MODALS  (focus-trapped, Escape-dismissible)
+     ========================================================= */
+
+  var lastFocused = null;
+  var modalKeyHandler = null;
+  var activeTimers = [];
+
+  function later(fn, ms) { activeTimers.push(setTimeout(fn, ms)); }
+
+  function clearTimers() {
+    activeTimers.forEach(clearTimeout);
+    activeTimers = [];
+  }
+
+  function focusables() {
+    return Array.prototype.slice.call(
+      modal.querySelectorAll("button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])")
+    ).filter(function (el) { return !el.disabled && el.offsetParent !== null; });
+  }
+
+  function openModal(html, onDismiss) {
+    // Chaining one modal straight into the next must not strand the old key
+    // handler, nor overwrite the focus we restore when the chain finally ends.
+    if (modalKeyHandler) {
+      document.removeEventListener("keydown", modalKeyHandler, true);
+      modalKeyHandler = null;
+    } else {
+      lastFocused = document.activeElement;
+    }
+    modal.innerHTML = html;
+    backdrop.hidden = false;
+
+    var first = focusables()[0];
+    if (first) first.focus();
+
+    modalKeyHandler = function (ev) {
+      if (ev.key === "Escape") {
+        ev.preventDefault();
+        closeModal();
+        if (onDismiss) onDismiss();
+        return;
+      }
+      if (ev.key !== "Tab") return;
+      var items = focusables();
+      if (!items.length) return;
+      var firstItem = items[0];
+      var lastItem  = items[items.length - 1];
+      if (ev.shiftKey && document.activeElement === firstItem) {
+        ev.preventDefault();
+        lastItem.focus();
+      } else if (!ev.shiftKey && document.activeElement === lastItem) {
+        ev.preventDefault();
+        firstItem.focus();
+      }
+    };
+    document.addEventListener("keydown", modalKeyHandler, true);
+  }
+
+  function closeModal() {
+    clearTimers();
+    backdrop.hidden = true;
+    modal.innerHTML = "";
+    if (modalKeyHandler) {
+      document.removeEventListener("keydown", modalKeyHandler, true);
+      modalKeyHandler = null;
+    }
+    if (lastFocused && document.body.contains(lastFocused) && lastFocused.offsetParent !== null) {
+      lastFocused.focus();
+    } else {
+      var fallback = paywall.hidden ? document.querySelector(".key--equals") : noThanks;
+      if (fallback) fallback.focus();
+    }
+  }
+
+  /* =========================================================
+     6. THE PAYWALL
+     ========================================================= */
+
+  var countdownSeconds = 0;
+  var countdownTimer = null;
+
+  function showPaywall(result) {
+    lockedValue.textContent = result;
+    calcScreen.hidden = true;
+    paywall.hidden = false;
+    document.body.className = document.body.className.replace("mode-calc", "mode-paywall");
+    window.scrollTo(0, 0);
+
+    // Reset the escape hatch for a fresh round of hostility.
+    fleeCount = 0;
+    noThanks.style.position = "";
+    noThanks.style.left = "";
+    noThanks.style.top = "";
+    paywall.focus();
+
+    // An "expiring" offer whose timer counts up.
+    countdownSeconds = 0;
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownTimer = setInterval(function () {
+      countdownSeconds++;
+      var m = String(Math.floor(countdownSeconds / 60)).padStart(2, "0");
+      var s = String(countdownSeconds % 60).padStart(2, "0");
+      $("countdown").textContent = m + ":" + s;
+    }, 1000);
+  }
+
+  function showCalculator() {
+    if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+    paywall.hidden = true;
+    calcScreen.hidden = false;
+    document.body.className = document.body.className.replace("mode-paywall", "mode-calc");
+    document.body.classList.add("free-tier");
+    window.scrollTo(0, 0);
+    var eq = document.querySelector(".key--equals");
+    if (eq) eq.focus();
+  }
+
+  // Buying is a dead end. No fields, no inputs, nothing collected.
+  document.querySelectorAll(".buy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var rect = btn.getBoundingClientRect();
+      burst(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      openModal(
+        '<h2 id="modal-title">\u{1F6AB} PAYMENT DECLINED</h2>' +
+        "<p>Your money is not absurd enough.</p>" +
+        '<p class="tiny">Error 402.7: insufficient whimsy. Please try again with a funnier amount.</p>' +
+        '<button class="modal__stay" data-close>BACK TO THE PLANS</button>'
+      );
+      modal.querySelector("[data-close]").addEventListener("click", closeModal);
+    });
+  });
+
+  /* =========================================================
+     7. THE GAUNTLET
+     ========================================================= */
+
+  var fleeCount = 0;
+  var MAX_FLEES = 3;
+
+  // Mouse-only. Keyboard users reach this on the first Tab, every time.
+  noThanks.addEventListener("mouseover", function () {
+    if (calm() || fleeCount >= MAX_FLEES) return;
+    fleeCount++;
+    var pad = 24;
+    var w = noThanks.offsetWidth  || 80;
+    var h = noThanks.offsetHeight || 20;
+    var x = pad + Math.random() * Math.max(0, window.innerWidth  - w - pad * 2);
+    var y = pad + Math.random() * Math.max(0, window.innerHeight - h - pad * 2);
+    noThanks.style.position = "fixed";
+    noThanks.style.left = Math.round(x) + "px";
+    noThanks.style.top  = Math.round(y) + "px";
+  });
+
+  noThanks.addEventListener("click", function () { runGauntlet(0); });
+
+  var STAGES = [
+    {
+      title: "\u{1F6D1} Wait! Are you sure?",
+      body: "You were <em>this</em> close to unlocking your answer. It's right there. We're holding it.",
+      tiny: "Most users who leave never learn what 7 &times; 8 is.",
+      stay: "OK I'LL STAY",
+      leave: "i'm evil and i hate math"
+    },
+    {
+      title: "\u{1F62D}",
+      body: "The calculator will remember this.",
+      tiny: "It has a very long memory and absolutely nothing else to do.",
+      stay: "ok i take it back, i'm sorry",
+      leave: "let it remember"
+    },
+    {
+      title: "\u{1F381} FINAL OFFER: 99.9% OFF!",
+      body: "We've never done this for anyone. We're doing it for you. Right now. Only you. And the other 12,847 people.",
+      tiny: "*Discount applies to the second year of a mandatory forty-year term.",
+      stay: "WOW! TAKE MY MONEY!",
+      leave: "no"
+    }
+  ];
+
+  function runGauntlet(stageIndex) {
+    if (stageIndex >= STAGES.length) { runCancellation(); return; }
+
+    var s = STAGES[stageIndex];
+    openModal(
+      '<h2 id="modal-title">' + s.title + "</h2>" +
+      "<p>" + s.body + "</p>" +
+      '<p class="tiny">' + s.tiny + "</p>" +
+      '<button class="modal__stay" data-stay>' + s.stay + "</button>" +
+      '<button class="modal__leave" data-leave>' + s.leave + "</button>"
+    );
+
+    modal.querySelector("[data-stay]").addEventListener("click", closeModal);
+    modal.querySelector("[data-leave]").addEventListener("click", function () {
+      closeModal();
+      runGauntlet(stageIndex + 1);
+    });
+  }
+
+  function runCancellation() {
+    openModal(
+      '<h2 id="modal-title">Processing cancellation&hellip;</h2>' +
+      '<p class="bar__label" data-pct>0%</p>' +
+      '<div class="bar"><div class="bar__fill" data-fill></div></div>' +
+      '<p class="tiny" data-note>Please do not close this window, your device, or your eyes.</p>'
+    );
+
+    var fill = modal.querySelector("[data-fill]");
+    var pct  = modal.querySelector("[data-pct]");
+    var note = modal.querySelector("[data-note]");
+
+    // Fills to 97%, then thinks better of it and runs backwards.
+    var script = [
+      { at: 100,  v: 12, note: "Locating your subscription&hellip;" },
+      { at: 900,  v: 58, note: "Consulting Gary&hellip;" },
+      { at: 1800, v: 97, note: "Almost done! Finalizing&hellip;" },
+      { at: 2900, v: 41, note: "Hmm. That's not right." },
+      { at: 3800, v: 12, note: "Recalculating regret&hellip;" },
+      { at: 4700, v: 3,  note: "Honestly, this is going worse than expected." }
+    ];
+
+    var speed = calm() ? 0.45 : 1;
+
+    script.forEach(function (step) {
+      later(function () {
+        fill.style.width = step.v + "%";
+        pct.textContent = step.v + "%";
+        note.innerHTML = step.note;
+      }, step.at * speed);
+    });
+
+    later(function () {
+      openModal(
+        '<h2 id="modal-title">fine. go.</h2>' +
+        "<p>Your cancellation is complete. You have been downgraded to <strong>FREE TIER</strong>.</p>" +
+        '<p class="tiny">Free tier includes: the buttons. Not the answers. The buttons.</p>' +
+        '<button class="modal__stay" data-out>back to my sad free calculator</button>'
+      );
+      modal.querySelector("[data-out]").addEventListener("click", function () {
+        closeModal();
+        showCalculator();
+      });
+    }, 5800 * speed);
+  }
+
+  /* =========================================================
+     8. FAKE SOCIAL PROOF
+     ========================================================= */
+
+  var liveCount = 12847;
+  setInterval(function () {
+    liveCount += Math.floor(Math.random() * 61) - 28;
+    if (liveCount < 9000) liveCount = 9000 + Math.floor(Math.random() * 400);
+    $("live-count").textContent = liveCount.toLocaleString("en-US");
+  }, 2400);
+
+  $("visitor").textContent = String(
+    1000000 + Math.floor(Math.random() * 8999999)
+  ).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+  render();
+})();
+</script>
+</body>
+</html>
