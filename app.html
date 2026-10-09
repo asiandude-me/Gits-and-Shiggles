@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MEGA CALC 9000</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="A free calculator. The arithmetic is free. The answers are not.">
+<title>MEGA CALC 9000</title>
 <style>
 /* ============================================================
    MEGA CALC 9000
@@ -27,9 +27,10 @@
 
 * { box-sizing: border-box; }
 
-html, body {
+html { min-height: 100%; }
+
+body {
   margin: 0;
-  padding: 0;
   min-height: 100%;
 }
 
@@ -93,8 +94,8 @@ body {
   pointer-events: none;
 }
 
-.marquee--top    { top: 0; }
-.marquee--bottom { bottom: 0; color: var(--pink); }
+.marquee--top    { top: 0; padding-top: calc(5px + env(safe-area-inset-top, 0px)); }
+.marquee--bottom { bottom: 0; color: var(--pink); padding-bottom: calc(5px + env(safe-area-inset-bottom, 0px)); }
 
 .marquee span {
   display: inline-block;
@@ -693,6 +694,983 @@ body.free-tier .calc  { box-shadow: 10px 10px 0 var(--lime), 20px 20px 0 var(--o
    text; only the motion goes away.
    ============================================================ */
 
+/* ============================================================
+   v2: MORE
+   Same rules as everything above: every period >= 400ms,
+   nothing strobes the viewport, calm mode switches it all off.
+   ============================================================ */
+
+[hidden] { display: none !important; }
+
+.key.is-pressed { filter: invert(1); }
+
+/* ---------- HUD: chaos meter + trophies ---------- */
+
+.hud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto 14px;
+}
+
+.chaos {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  background: var(--ink);
+  color: var(--paper);
+  border: 3px solid var(--pink);
+  border-radius: 999px;
+  font-size: clamp(.66rem, 2.7vw, .8rem);
+  font-weight: bold;
+  letter-spacing: .06em;
+}
+
+.chaos__track {
+  display: block;
+  width: 90px;
+  height: 10px;
+  background: #3a2350;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.chaos__fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--lime), var(--yellow), var(--orange), var(--pink));
+  transition: width .3s ease-out;
+}
+
+/* ---------- sponsor line under the display ---------- */
+
+.sponsor {
+  margin: -6px 0 12px;
+  min-height: 1.3em;
+  text-align: right;
+  font-size: clamp(.6rem, 2.5vw, .72rem);
+  color: var(--cyan);
+  letter-spacing: .04em;
+}
+
+/* ---------- free-tier ads ---------- */
+
+.ad {
+  display: none;
+  position: relative;
+  margin: 0 auto 14px;
+  max-width: 460px;
+  padding: 12px 42px 12px 14px;
+  background: var(--yellow);
+  color: var(--ink);
+  border: 4px dashed var(--ink);
+  border-radius: 12px;
+  font-size: clamp(.8rem, 3.4vw, 1rem);
+  font-weight: bold;
+  text-align: center;
+  transform: rotate(1deg);
+}
+
+body.free-tier .ad { display: block; }
+
+.ad__label {
+  display: block;
+  margin-bottom: 3px;
+  font-size: .62rem;
+  letter-spacing: .16em;
+  opacity: .75;
+}
+
+.ad__close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  font-family: var(--font);
+  font-weight: bold;
+  line-height: 1;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.ad__close:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+/* ---------- paywall extras ---------- */
+
+.peek-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 0 auto 16px;
+}
+
+.peek-hint {
+  margin: 0;
+  min-height: 1.4em;
+  max-width: 420px;
+  text-align: center;
+  font-size: clamp(.75rem, 3.2vw, .92rem);
+  color: var(--paper);
+  text-shadow: 1px 1px 0 var(--ink);
+}
+
+.billing {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto 22px;
+  padding: 4px;
+  background: var(--ink);
+  border: 3px solid var(--yellow);
+  border-radius: 999px;
+}
+
+.billing button {
+  font-family: var(--font);
+  font-size: clamp(.72rem, 3vw, .88rem);
+  font-weight: bold;
+  padding: 8px 14px;
+  color: var(--paper);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.billing button[aria-pressed="true"] { background: var(--lime); color: var(--ink); }
+.billing button:focus-visible { outline: 3px solid var(--paper); outline-offset: 2px; }
+
+.alt-pay {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin: 0 auto 18px;
+}
+
+/* ---------- cookie banner ---------- */
+
+.cookie {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(46px + env(safe-area-inset-bottom, 0px));
+  z-index: 80;
+  display: grid;
+  gap: 10px;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 14px 16px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 4px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 8px 8px 0 var(--purple);
+  font-size: clamp(.78rem, 3.3vw, .92rem);
+}
+
+.cookie p { margin: 0; line-height: 1.45; }
+
+.cookie__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.cookie__accept {
+  font-family: var(--font);
+  font-size: clamp(.82rem, 3.4vw, .98rem);
+  font-weight: bold;
+  padding: 10px 16px;
+  color: var(--ink);
+  background: var(--lime);
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.cookie__accept--alt { background: var(--cyan); }
+
+.cookie__manage {
+  font-family: var(--font);
+  font-size: .78rem;
+  padding: 8px 6px;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.cookie button:focus-visible { outline: 3px solid var(--purple); outline-offset: 2px; }
+
+.switches {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  text-align: left;
+}
+
+.switches li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: clamp(.78rem, 3.3vw, .92rem);
+}
+
+.switch {
+  position: relative;
+  flex: none;
+  width: 48px;
+  height: 28px;
+  background: var(--lime);
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 16px;
+  height: 16px;
+  background: var(--ink);
+  border-radius: 50%;
+}
+
+.switch[aria-checked="false"] { background: #d9d2df; }
+.switch[aria-checked="false"]::after { right: auto; left: 3px; }
+.switch:focus-visible { outline: 3px solid var(--purple); outline-offset: 2px; }
+
+/* ---------- Gary ---------- */
+
+.gary-bubble {
+  position: fixed;
+  right: 14px;
+  bottom: calc(50px + env(safe-area-inset-bottom, 0px));
+  z-index: 75;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-family: var(--font);
+  font-size: .85rem;
+  font-weight: bold;
+  color: var(--ink);
+  background: var(--cyan);
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: 4px 4px 0 var(--ink);
+  cursor: pointer;
+  animation: throb 2s ease-in-out infinite;
+}
+
+.gary-bubble:focus-visible { outline: 4px solid var(--paper); outline-offset: 2px; }
+
+.gary-bubble__dot {
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  font-size: .72rem;
+  color: var(--paper);
+  background: var(--pink);
+  border-radius: 999px;
+}
+
+.gary {
+  position: fixed;
+  right: 14px;
+  bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+  z-index: 76;
+  display: flex;
+  flex-direction: column;
+  width: min(340px, calc(100vw - 28px));
+  max-height: min(460px, 64vh);
+  color: var(--ink);
+  background: var(--paper);
+  border: 4px solid var(--ink);
+  border-radius: 18px;
+  box-shadow: 8px 8px 0 var(--cyan);
+  overflow: hidden;
+}
+
+.gary__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.gary__avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  font-weight: bold;
+  color: var(--ink);
+  background: var(--yellow);
+  border-radius: 50%;
+}
+
+.gary__who { flex: 1; min-width: 0; line-height: 1.25; font-weight: bold; }
+.gary__who small { display: block; font-size: .68rem; font-weight: normal; opacity: .85; }
+
+.gary__close {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  font-family: var(--font);
+  font-weight: bold;
+  color: var(--paper);
+  background: transparent;
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.gary__close:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+
+.gary__log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 120px;
+  overflow-y: auto;
+  padding: 12px;
+  font-size: .86rem;
+}
+
+.msg {
+  max-width: 85%;
+  margin: 0;
+  padding: 8px 11px;
+  line-height: 1.4;
+  border-radius: 14px;
+  overflow-wrap: anywhere;
+}
+
+.msg--gary   { align-self: flex-start; background: #efe7f7; border-bottom-left-radius: 4px; }
+.msg--me     { align-self: flex-end;   background: var(--lime); border-bottom-right-radius: 4px; }
+.msg--typing { color: #5d5168; font-style: italic; }
+
+.gary__replies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 12px;
+  border-top: 2px solid #e6e0ea;
+}
+
+.reply {
+  font-family: var(--font);
+  font-size: .76rem;
+  font-weight: bold;
+  padding: 6px 10px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.reply:hover { background: var(--yellow); }
+.reply[aria-disabled="true"] { opacity: .5; cursor: wait; }
+.reply:focus-visible { outline: 3px solid var(--purple); outline-offset: 2px; }
+
+/* ---------- toasts ---------- */
+
+.toasts {
+  position: fixed;
+  top: calc(40px + env(safe-area-inset-top, 0px));
+  right: 14px;
+  z-index: 85;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(320px, calc(100vw - 28px));
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  font-size: .8rem;
+  line-height: 1.35;
+  color: var(--paper);
+  background: var(--ink);
+  border: 3px solid var(--yellow);
+  border-radius: 14px;
+  box-shadow: 5px 5px 0 var(--pink);
+  animation: toast-in .45s cubic-bezier(.2, 1.5, .4, 1);
+}
+
+.toast__icon { flex: none; font-size: 1.5rem; }
+
+.toast strong {
+  display: block;
+  font-size: .7rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--yellow);
+}
+
+.toast--fomo { border-color: var(--lime); box-shadow: 5px 5px 0 var(--cyan); }
+.toast--fomo strong { color: var(--lime); text-transform: none; letter-spacing: 0; }
+
+@keyframes toast-in {
+  from { transform: translateX(30px) scale(.9); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+/* ---------- achievements list ---------- */
+
+.ach-list {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  text-align: left;
+}
+
+.ach-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  font-size: clamp(.74rem, 3.1vw, .86rem);
+  line-height: 1.35;
+  color: #4a3f55;
+  background: #f1edf5;
+  border-radius: 10px;
+}
+
+.ach-list li.got { color: var(--ink); background: #eaffb8; }
+.ach-list strong { display: block; }
+.ach__icon { flex: none; width: 1.6em; font-size: 1.3rem; text-align: center; }
+
+/* ---------- captcha ---------- */
+
+.captcha {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  max-width: 240px;
+  margin: 4px auto 10px;
+}
+
+.captcha__cell {
+  aspect-ratio: 1;
+  max-width: 100%;
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 1.6rem;
+  font-weight: bold;
+  color: var(--ink);
+  background: #f1edf5;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.captcha__cell[aria-pressed="true"] { background: var(--cyan); box-shadow: inset 0 0 0 3px var(--paper); }
+.captcha__cell:focus-visible { outline: 4px solid var(--purple); outline-offset: 2px; }
+
+.modal .captcha__msg {
+  min-height: 1.4em;
+  font-size: .85rem;
+  font-weight: bold;
+  color: #c4006b;
+}
+
+/* ---------- cursor trail ---------- */
+
+.trail {
+  position: fixed;
+  z-index: 90;
+  font-size: 16px;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.trail.go { animation: trail 700ms ease-out forwards; }
+
+@keyframes trail {
+  0%   { transform: translate(-50%, -50%) scale(1); opacity: .95; }
+  100% { transform: translate(-50%, calc(-50% + 26px)) scale(.3) rotate(160deg); opacity: 0; }
+}
+
+/* ---------- chaos tiers ---------- */
+
+body[data-chaos="2"] .key { animation-duration: 1.4s; }
+body[data-chaos="3"] .key { animation-duration: 1.05s; }
+body[data-chaos="4"] .key { animation-duration: .8s; }
+
+body[data-chaos="3"] .calc,
+body[data-chaos="4"] .calc {
+  animation: tilt 3.2s ease-in-out infinite, hue 9s linear infinite;
+}
+
+body[data-chaos="4"] .title {
+  animation: bob 1.8s ease-in-out infinite, glitch 1.2s steps(2) infinite;
+}
+
+body[data-chaos="4"] .chaos { border-color: var(--lime); }
+
+@keyframes hue { to { filter: hue-rotate(360deg); } }
+
+@keyframes glitch {
+  0%, 100% { text-shadow: 3px 3px 0 var(--pink), 6px 6px 0 var(--cyan), 9px 9px 0 var(--purple); }
+  50%      { text-shadow: -3px 2px 0 var(--cyan), 5px -2px 0 var(--pink), 9px 9px 0 var(--lime); }
+}
+
+/* ============================================================
+   v3: OVERSTIMULATION
+   Loud motion, not flashing. Every CSS animation still runs at
+   >= 400ms per cycle; anything spawned per keypress that covers
+   real screen area (ghost digits, screen shake) is rate-limited
+   in script to once per 400ms. Calm mode and reduced motion turn
+   every bit of it off.
+   ============================================================ */
+
+.calc { position: relative; margin-top: 28px; }
+
+/* ---------- title: rainbow wave, one letter at a time ---------- */
+
+.title .ch {
+  display: inline-block;
+  animation: wave 1.6s ease-in-out infinite, rainbow 3.2s linear infinite;
+  animation-delay: calc(var(--i) * -.11s), calc(var(--i) * -.23s);
+}
+
+@keyframes wave {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-12px) rotate(-6deg); }
+}
+
+@keyframes rainbow {
+  0%, 100% { color: var(--yellow); }
+  25%      { color: var(--lime); }
+  50%      { color: var(--cyan); }
+  75%      { color: var(--pink); }
+}
+
+/* ---------- googly eyes ---------- */
+
+.eyes {
+  position: absolute;
+  top: -36px;
+  right: 26px;
+  z-index: 2;
+  display: flex;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.eye {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  background: var(--paper);
+  border: 4px solid var(--ink);
+  border-radius: 50%;
+  animation: blink 4.2s ease-in-out infinite;
+}
+
+.pupil {
+  width: 15px;
+  height: 15px;
+  background: var(--ink);
+  border-radius: 50%;
+}
+
+@keyframes blink {
+  0%, 93%, 100% { transform: scaleY(1); }
+  96%           { transform: scaleY(.1); }
+}
+
+/* ---------- drifting background junk ---------- */
+
+.floaters {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.floaters span {
+  position: absolute;
+  left: -12%;
+  top: var(--y);
+  font-size: var(--s);
+  opacity: .6;
+  animation: float var(--d) linear infinite;
+  animation-delay: var(--dl);
+}
+
+@keyframes float {
+  from { transform: translateX(0) rotate(0deg); }
+  to   { transform: translateX(135vw) rotate(720deg); }
+}
+
+/* ---------- FX canvas ---------- */
+
+#fx {
+  position: fixed;
+  inset: 0;
+  z-index: 65;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* ---------- screen shake (rate-limited in script) ---------- */
+
+.screen.shake { animation: shake .45s cubic-bezier(.36, .07, .19, .97) both; }
+
+@keyframes shake {
+  10%, 90%      { translate: -2px 0; }
+  20%, 80%      { translate: 4px 0; }
+  30%, 50%, 70% { translate: calc(var(--amp, 6px) * -1) 0; }
+  40%, 60%      { translate: var(--amp, 6px) 0; }
+}
+
+/* ---------- ghost digits flying out of the display ---------- */
+
+.ghost {
+  position: fixed;
+  z-index: 64;
+  font-family: "Courier New", ui-monospace, monospace;
+  font-size: 4rem;
+  font-weight: bold;
+  color: var(--lime);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ghost.go { animation: ghost .6s ease-out forwards; }
+
+@keyframes ghost {
+  from { transform: translate(-50%, -50%) scale(1); opacity: .4; }
+  to   { transform: translate(-50%, -50%) scale(4.5); opacity: 0; }
+}
+
+/* ---------- combo counter + callouts ---------- */
+
+.combo {
+  position: fixed;
+  left: 14px;
+  top: 46%;
+  z-index: 70;
+  font-family: var(--font);
+  font-size: clamp(1.5rem, 7vw, 2.8rem);
+  font-weight: 900;
+  line-height: 1;
+  color: var(--yellow);
+  -webkit-text-stroke: 2px var(--ink);
+  text-shadow: 3px 3px 0 var(--pink), 6px 6px 0 var(--cyan);
+  transform: rotate(-8deg);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.combo small {
+  display: block;
+  font-size: .42em;
+  letter-spacing: .14em;
+  -webkit-text-stroke: 1px var(--ink);
+}
+
+.combo.on { opacity: 1; }
+.combo.bump { animation: combo-pop .45s cubic-bezier(.2, 1.6, .4, 1); }
+
+@keyframes combo-pop {
+  from { transform: rotate(-8deg) scale(1.8); }
+  to   { transform: rotate(-8deg) scale(1); }
+}
+
+.callout {
+  position: fixed;
+  z-index: 72;
+  font-family: var(--font);
+  font-size: clamp(1.6rem, 8vw, 3.4rem);
+  font-weight: 900;
+  white-space: nowrap;
+  -webkit-text-stroke: 2px var(--ink);
+  text-shadow: 4px 4px 0 var(--purple);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.callout.go { animation: callout .95s cubic-bezier(.2, 1.5, .4, 1) forwards; }
+
+@keyframes callout {
+  0%   { transform: translate(-50%, -50%) scale(.2) rotate(var(--r)); opacity: 0; }
+  20%  { transform: translate(-50%, -50%) scale(1.25) rotate(var(--r)); opacity: 1; }
+  70%  { opacity: 1; }
+  100% { transform: translate(-50%, calc(-50% - 40px)) scale(1) rotate(var(--r)); opacity: 0; }
+}
+
+/* ---------- KA-CHING ---------- */
+
+.kaching {
+  position: fixed;
+  left: 50%;
+  top: 42%;
+  z-index: 95;
+  font-family: var(--font);
+  font-size: clamp(2.6rem, 13vw, 6rem);
+  font-weight: 900;
+  white-space: nowrap;
+  color: var(--yellow);
+  -webkit-text-stroke: 3px var(--ink);
+  text-shadow: 5px 5px 0 var(--pink), 10px 10px 0 var(--cyan);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.kaching.go { animation: kaching 1.2s cubic-bezier(.2, 1.4, .4, 1) forwards; }
+
+@keyframes kaching {
+  0%   { transform: translate(-50%, -50%) scale(.1) rotate(-30deg); opacity: 0; }
+  25%  { transform: translate(-50%, -50%) scale(1.15) rotate(6deg); opacity: 1; }
+  70%  { transform: translate(-50%, -50%) scale(1) rotate(-3deg); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.6) rotate(0deg); opacity: 0; }
+}
+
+.shockwave {
+  position: fixed;
+  left: 50%;
+  top: 42%;
+  z-index: 94;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border: 4px solid var(--yellow);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.shockwave.go { animation: shock .9s ease-out forwards; }
+
+@keyframes shock {
+  from { transform: scale(.2); opacity: .7; }
+  to   { transform: scale(40); opacity: 0; }
+}
+
+/* ---------- paywall entrance: cards fly in, stamps slam ---------- */
+
+/* Cards clip sideways so the 3.5x slam-in never widens the page on phones.
+   Their own shadows are not clipped; only their children are. */
+.tier { overflow-x: clip; }
+
+.stamp {
+  position: absolute;
+  top: 46px;
+  right: 10px;
+  z-index: 1;
+  padding: 4px 10px;
+  font-family: var(--font);
+  font-size: clamp(.7rem, 3vw, .9rem);
+  font-weight: 900;
+  color: #d1005a;
+  background: rgba(255, 255, 255, .88);
+  border: 3px solid #d1005a;
+  border-radius: 8px;
+  transform: rotate(12deg);
+  pointer-events: none;
+}
+
+.tier--enterprise .stamp {
+  color: var(--lime);
+  background: rgba(20, 0, 31, .88);
+  border-color: var(--lime);
+}
+
+.paywall-enter .tier { animation: tier-in .7s cubic-bezier(.2, 1.4, .4, 1) both; }
+.paywall-enter .tier:nth-child(2) { animation-delay: .12s; }
+.paywall-enter .tier:nth-child(3) { animation-delay: .24s; }
+
+.paywall-enter .stamp { animation: stamp .5s cubic-bezier(.2, 1.6, .4, 1) 1s both; }
+
+@keyframes tier-in {
+  from { transform: translateY(80px) rotate(-6deg) scale(.8); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+@keyframes stamp {
+  from { transform: rotate(12deg) scale(3.5); opacity: 0; }
+  to   { transform: rotate(12deg) scale(1); opacity: 1; }
+}
+
+/* ---------- disco mode (MAXIMUM ARITHMETIC only) ---------- */
+
+.disco {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: none;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+body[data-chaos="4"] .disco { display: block; }
+
+.beam {
+  position: absolute;
+  top: -10%;
+  left: 50%;
+  width: 46vmax;
+  height: 140vmax;
+  margin-left: -23vmax;
+  transform-origin: 50% 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .3), rgba(255, 255, 255, 0) 70%);
+  clip-path: polygon(48% 0, 52% 0, 100% 100%, 0 100%);
+  mix-blend-mode: overlay;
+  animation: sweep 6s ease-in-out infinite alternate;
+}
+
+.beam.b2 {
+  background: linear-gradient(180deg, rgba(0, 240, 255, .32), rgba(0, 240, 255, 0) 70%);
+  animation-duration: 7.5s;
+  animation-delay: -2s;
+}
+
+.beam.b3 {
+  background: linear-gradient(180deg, rgba(255, 45, 149, .32), rgba(255, 45, 149, 0) 70%);
+  animation-duration: 9s;
+  animation-delay: -4s;
+}
+
+@keyframes sweep {
+  from { transform: rotate(-38deg); }
+  to   { transform: rotate(38deg); }
+}
+
+.ball {
+  position: absolute;
+  top: calc(28px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  font-size: 3rem;
+  animation: spin 3s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: translateX(-50%) rotate(0deg); }
+  to   { transform: translateX(-50%) rotate(360deg); }
+}
+
+/* ---------- aura ---------- */
+
+.aura-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: clamp(.66rem, 2.7vw, .8rem);
+  font-weight: bold;
+  letter-spacing: .06em;
+  color: var(--paper);
+  background: var(--ink);
+  border: 3px solid var(--yellow);
+  border-radius: 999px;
+}
+
+.aura-pill b { color: var(--yellow); font-variant-numeric: tabular-nums; }
+
+.aura-pop {
+  position: fixed;
+  z-index: 73;
+  font-family: var(--font);
+  font-size: clamp(.95rem, 4vw, 1.3rem);
+  font-weight: 900;
+  white-space: nowrap;
+  color: var(--lime);
+  -webkit-text-stroke: 1px var(--ink);
+  text-shadow: 2px 2px 0 var(--ink);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.aura-pop.neg { color: var(--pink); }
+.aura-pop.go { animation: aura-rise 1s ease-out forwards; }
+
+@keyframes aura-rise {
+  0%   { transform: translate(-50%, -50%) scale(.6); opacity: 0; }
+  15%  { transform: translate(-50%, -60%) scale(1.15); opacity: 1; }
+  100% { transform: translate(-50%, -260%) scale(1); opacity: 0; }
+}
+
+/* ---------- vine boom ---------- */
+
+.moai {
+  position: fixed;
+  left: 50%;
+  top: 45%;
+  z-index: 96;
+  font-size: clamp(6rem, 30vw, 14rem);
+  line-height: 1;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.moai.go { animation: moai 1.1s cubic-bezier(.2, 1.4, .4, 1) forwards; }
+
+@keyframes moai {
+  0%   { transform: translate(-50%, -50%) scale(.2); opacity: 0; }
+  20%  { transform: translate(-50%, -50%) scale(1.25); opacity: 1; }
+  35%  { transform: translate(-50%, -50%) scale(1) rotate(-4deg); }
+  50%  { transform: translate(-50%, -50%) scale(1) rotate(4deg); }
+  75%  { opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.1); opacity: 0; }
+}
+
+/* ---------- 6 7 ---------- */
+
+.callout--huge { font-size: clamp(3rem, 18vw, 8rem); }
+
+/* beats the chaos-tier .calc animations on specificity */
+body[data-chaos] .calc.sixseven { animation: sixseven 1s ease-in-out 1; }
+
+@keyframes sixseven {
+  0%, 100% { transform: rotate(-1deg) translateY(0); }
+  20%      { transform: rotate(-9deg) translateY(-14px); }
+  40%      { transform: rotate(8deg) translateY(10px); }
+  60%      { transform: rotate(-8deg) translateY(-10px); }
+  80%      { transform: rotate(6deg) translateY(6px); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation: none !important;
@@ -729,38 +1707,114 @@ body.free-tier .calc  { box-shadow: 10px 10px 0 var(--lime), 20px 20px 0 var(--o
   }
 
   .particle { display: none; }
+  .trail { display: none; }
+  .disco, .floaters, #fx, .ghost, .callout, .combo, .kaching, .shockwave, .aura-pop, .moai { display: none !important; }
+  .pupil { transform: none !important; }
 }
+
+/* Calm mode: the same rules as reduced motion, for anyone who wants them
+   without changing a system setting. Free, because we're not monsters. */
+body.calm-mode *, body.calm-mode *::before, body.calm-mode *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+body.calm-mode .bg {
+    background: linear-gradient(160deg, var(--purple), var(--pink) 45%, var(--orange));
+  }
+body.calm-mode .bg::after { display: none; }
+body.calm-mode .marquee span { padding-right: 0; }
+body.calm-mode .title, body.calm-mode .subtitle, body.calm-mode .calc, body.calm-mode .tier--pro, body.calm-mode .flag, body.calm-mode .paywall-head h2 {
+    transform: none;
+  }
+body.calm-mode .key:hover { filter: none; background: var(--yellow); }
+body.calm-mode .no-thanks {
+    font-size: 15px;
+    color: var(--ink);
+    background: var(--paper);
+    border: 3px solid var(--ink);
+    border-radius: 999px;
+    padding: 8px 16px;
+    cursor: pointer;
+  }
+body.calm-mode .modal__leave {
+    font-size: 15px;
+    color: var(--ink);
+  }
+body.calm-mode .particle { display: none; }
+body.calm-mode .trail { display: none; }
+body.calm-mode .disco, body.calm-mode .floaters, body.calm-mode #fx, body.calm-mode .ghost, body.calm-mode .callout, body.calm-mode .combo, body.calm-mode .kaching, body.calm-mode .shockwave, body.calm-mode .aura-pop, body.calm-mode .moai { display: none !important; }
+body.calm-mode .pupil { transform: none !important; }
+
 </style>
 </head>
-<body class="mode-calc">
+<body>
 
 <a class="back-to-site" href="index.html">&#9664; MEGACALC&trade;</a>
 
 <div class="bg" aria-hidden="true"></div>
 
+<div class="floaters" aria-hidden="true">
+  <span style="--y:6%;--s:3rem;--d:26s;--dl:-3s">&#129518;</span>
+  <span style="--y:15%;--s:2.6rem;--d:19s;--dl:-11s">&#128511;</span>
+  <span style="--y:24%;--s:3.4rem;--d:31s;--dl:-20s">&#128184;</span>
+  <span style="--y:33%;--s:2.4rem;--d:23s;--dl:-7s">&#128128;</span>
+  <span style="--y:42%;--s:3.2rem;--d:28s;--dl:-15s">&#128701;</span>
+  <span style="--y:51%;--s:2.2rem;--d:21s;--dl:-2s">&#10135;</span>
+  <span style="--y:60%;--s:3rem;--d:34s;--dl:-25s">&#129344;</span>
+  <span style="--y:68%;--s:2.6rem;--d:18s;--dl:-9s">6&#65039;&#8419;</span>
+  <span style="--y:75%;--s:2.6rem;--d:18s;--dl:-8s">7&#65039;&#8419;</span>
+  <span style="--y:83%;--s:2.8rem;--d:25s;--dl:-17s">&#128557;</span>
+  <span style="--y:90%;--s:2.4rem;--d:29s;--dl:-5s">&#128016;</span>
+  <span style="--y:96%;--s:2rem;--d:22s;--dl:-13s">&#128293;</span>
+</div>
+
+<div class="disco" aria-hidden="true">
+  <span class="beam"></span><span class="beam b2"></span><span class="beam b3"></span>
+  <span class="ball">&#129705;</span>
+</div>
+
 <div class="marquee marquee--top" aria-hidden="true">
-  <span>&#11088; PREMIUM MATH &#11088; ACT NOW &#11088; NUMBERS GOING FAST &#11088; 9 OUT OF 10 MATHEMATICIANS AGREE &#11088; PREMIUM MATH &#11088; ACT NOW &#11088; NUMBERS GOING FAST &#11088; 9 OUT OF 10 MATHEMATICIANS AGREE &#11088;&nbsp;</span>
+  <span>&#11088; PREMIUM MATH &#11088; SKIBIDI ARITHMETIC &#11088; +1000 AURA PER DIGIT &#11088; 9 OUT OF 10 SIGMAS AGREE &#11088; NO CAP &#11088; 6 7 &#11088; PREMIUM MATH &#11088; SKIBIDI ARITHMETIC &#11088; +1000 AURA PER DIGIT &#11088; 9 OUT OF 10 SIGMAS AGREE &#11088; NO CAP &#11088; 6 7 &#11088;&nbsp;</span>
 </div>
 
 <div class="marquee marquee--bottom" aria-hidden="true">
-  <span>&#128293; LIMITED TIME &#128293; OFFER ENDS EVENTUALLY &#128293; ADDITION SOLD SEPARATELY &#128293; LIMITED TIME &#128293; OFFER ENDS EVENTUALLY &#128293; ADDITION SOLD SEPARATELY &#128293;&nbsp;</span>
+  <span>&#128293; LIMITED TIME &#128293; FANUM TAX APPLIES TO ALL ANSWERS &#128293; ONLY IN OHIO &#128293; ADDITION SOLD SEPARATELY &#128293; WE'RE SO BACK &#128293; IT'S OVER &#128293; LIMITED TIME &#128293; FANUM TAX APPLIES TO ALL ANSWERS &#128293; ONLY IN OHIO &#128293; ADDITION SOLD SEPARATELY &#128293; WE'RE SO BACK &#128293; IT'S OVER &#128293;&nbsp;</span>
 </div>
 
 <!-- ============ SCREEN 1: THE CALCULATOR ============ -->
 <main class="screen" id="calc-screen">
 
   <h1 class="title">MEGA&nbsp;CALC&nbsp;9000</h1>
-  <p class="subtitle">the last calculator you will ever need to pay for&trade;</p>
+  <p class="subtitle" id="tagline">the last calculator you will ever need to pay for&trade;</p>
 
   <p class="badge">&#128308; LIVE &mdash; <span id="live-count">12,847</span> people are doing math right now</p>
 
+  <div class="hud">
+    <div class="chaos" id="chaos" role="meter" aria-label="Brainrot level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <span>BRAINROT</span>
+      <span class="chaos__track" aria-hidden="true"><span class="chaos__fill" id="chaos-fill"></span></span>
+      <span id="chaos-label">Mild</span>
+    </div>
+    <button class="mini-btn" id="trophy-btn" aria-label="Achievements">&#127942; <span id="trophy-count">0</span>/<span id="trophy-total">27</span></button>
+    <span class="aura-pill"><span aria-hidden="true">&#10024;</span> AURA <b id="aura">+0</b></span>
+    <button class="mini-btn" id="calm-btn" aria-pressed="false">&#128524; Calm mode (free)</button>
+  </div>
+
   <p class="shame">&#129296; FREE TIER &mdash; ads enabled, answers disabled</p>
 
+  <aside class="ad" aria-label="Advertisement">
+    <span class="ad__label">ADVERTISEMENT</span>
+    <span id="ad-text">&#128293; HOT SINGLE DIGITS IN OHIO</span>
+    <button class="ad__close" id="ad-close" aria-label="Close ad">&#10005;</button>
+  </aside>
+
   <div class="calc">
+    <div class="eyes" aria-hidden="true"><span class="eye"><span class="pupil"></span></span><span class="eye"><span class="pupil"></span></span></div>
     <output class="display" id="display" aria-live="polite" aria-label="Calculator display">
       <span class="expr" id="expr"></span>
       <span id="display-value">0</span>
     </output>
+    <p class="sponsor" id="sponsor">today's digits are brought to you by HEXADYNE</p>
 
     <div class="pad">
       <button class="key key--digit" data-digit="7">7</button>
@@ -791,57 +1845,72 @@ body.free-tier .calc  { box-shadow: 10px 10px 0 var(--lime), 20px 20px 0 var(--o
     <button class="mini-btn" id="mute-toggle" aria-pressed="false">&#128266; UNMUTE FOR THE FULL EXPERIENCE</button>
   </div>
 
-  <p class="visitor">you are visitor #<span id="visitor">0000000</span> &bull; this site is best viewed in all browsers at once</p>
+  <p class="visitor">you are visitor #<span id="visitor">0000000</span> &bull; this site is best viewed in all browsers at once &bull; certified Ohio moment<br><span id="visit-note"></span></p>
 </main>
 
 <!-- ============ SCREEN 2: THE PAYWALL ============ -->
 <section class="screen" id="paywall-screen" hidden tabindex="-1" aria-labelledby="paywall-title">
 
   <div class="paywall-head">
-    <h2 id="paywall-title">&#128274; YOUR ANSWER IS READY!</h2>
-    <p class="subtitle">We did the math. Now let's talk about you.</p>
+    <h2 id="paywall-title">&#128274; YOUR ANSWER IS READY! &#128511;</h2>
+    <p class="subtitle">We did the math. Now let's talk about you. (chat, is this real? &#128557;)</p>
   </div>
 
   <div class="locked">
     <div class="locked__value" id="locked-value" aria-hidden="true">0</div>
-    <div class="locked__overlay" aria-hidden="true">RESULT LOCKED &#128274;</div>
+    <div class="locked__overlay" aria-hidden="true">RESULT LOCKED &#128274; (skill issue)</div>
   </div>
   <p class="sr-only" id="locked-sr">Your result has been calculated and locked behind a paywall.</p>
 
+  <div class="peek-row">
+    <button class="mini-btn" id="peek-btn">&#128064; FREE PREVIEW</button>
+    <p class="peek-hint" id="peek-hint" aria-live="polite"></p>
+  </div>
+
   <p class="countdown">&#9203; This exclusive offer expires in <span id="countdown">00:00</span></p>
+
+  <div class="billing" role="group" aria-label="Billing period">
+    <button id="bill-monthly" aria-pressed="true">Monthly</button>
+    <button id="bill-annual" aria-pressed="false">Annual (save 0%)</button>
+  </div>
 
   <div class="tiers">
 
     <div class="tier">
+      <span class="stamp" aria-hidden="true">W DEAL &#128293;</span>
       <h3>CASUAL ARITHMETIC</h3>
-      <p class="tier__price">$499.99<span style="font-size:.5em">/day</span></p>
-      <p class="tier__cadence">billed every 4 hours, in advance, forever</p>
+      <p class="tier__price" id="price-casual">$499.99<span style="font-size:.5em">/day</span></p>
+      <p class="tier__cadence" id="cad-casual">billed every 4 hours, in advance, forever</p>
       <ul>
         <li>Unlocks the <strong>+</strong> operator</li>
         <li>Other operators sold separately</li>
         <li>Results delivered within 6&ndash;8 business weeks</li>
         <li>Up to <strong>3 digits</strong> per answer (4th digit: $89/ea)</li>
+        <li>+10 aura (non-refundable)</li>
       </ul>
       <button class="buy" data-buy="casual">START MY 0-DAY FREE TRIAL</button>
     </div>
 
     <div class="tier tier--pro">
       <span class="flag">MOST POPULAR!</span>
+      <span class="stamp" aria-hidden="true">BEST VALUE? &#129320;</span>
       <h3>MATHEMAGICIAN PRO</h3>
-      <p class="tier__price">$9,999.99<span style="font-size:.5em">/week</span></p>
-      <p class="tier__cadence">plus 14.7% of your lifetime gross earnings &bull; auto-renews every 11 seconds</p>
+      <p class="tier__price" id="price-pro">$9,999.99<span style="font-size:.5em">/week</span></p>
+      <p class="tier__cadence" id="cad-pro">plus 14.7% of your lifetime gross earnings &bull; auto-renews every 11 seconds</p>
       <ul>
         <li>All four operators (subject to availability)</li>
         <li>The decimal point, on weekdays</li>
         <li>Priority access to the number <strong>7</strong></li>
+        <li>Priority access to <strong>6 7</strong> &#129335;</li>
         <li>Cancel anytime* <em>(*by fax, in person, in Liechtenstein)</em></li>
       </ul>
       <button class="buy" data-buy="pro">YES! I LOVE NUMBERS THAT MUCH</button>
     </div>
 
     <div class="tier tier--enterprise">
+      <span class="stamp" aria-hidden="true">ASK GARY &#128511;</span>
       <h3>ENTERPRISE</h3>
-      <p class="tier__price">$((47,281 &times; 3.5) &divide; 0.07) + 19.99</p>
+      <p class="tier__price" id="price-ent">$((47,281 &times; 3.5) &divide; 0.07) + 19.99</p>
       <p class="tier__cadence">
         per seat, per quarter. To determine your exact price, simply evaluate
         the expression above using a calculator. Calculator sold separately.
@@ -851,10 +1920,17 @@ body.free-tier .calc  { box-shadow: 10px 10px 0 var(--lime), 20px 20px 0 var(--o
         <li>** up to 2 answers</li>
         <li>A dedicated account manager named Gary</li>
         <li>Gary does not know math</li>
+        <li>Gary has negative aura</li>
       </ul>
       <button class="buy" data-buy="enterprise">CONTACT SALES (GARY)</button>
     </div>
 
+  </div>
+
+  <div class="alt-pay">
+    <button class="mini-btn" id="pay-crypto">&#129689; Pay with $MATH coin</button>
+    <button class="mini-btn" id="pay-soul">&#128123; Pay with your soul</button>
+    <button class="mini-btn" id="pay-aura">&#128511; Pay with aura</button>
   </div>
 
   <p class="fineprint">
@@ -864,13 +1940,49 @@ body.free-tier .calc  { box-shadow: 10px 10px 0 var(--lime), 20px 20px 0 var(--o
     &ldquo;as-is&rdquo; and may be wrong. Refunds are processed by carrier pigeon within 400 business years.
     Governing jurisdiction is the Moon. Cancellation requires a notarized fax sent to a machine we
     have not owned since 2004. The number 8 is licensed, not sold. We reserve the right to change
-    these terms while you are reading them. We just did it again.
+    these terms while you are reading them. We just did it again. All answers are subject to Fanum tax.
+    Results may be mid. Using this calculator in Ohio voids the warranty. 6 7.
   </p>
 
   <div class="no-thanks-wrap">
     <button class="no-thanks" id="no-thanks">no thanks, i'll estimate</button>
   </div>
 </section>
+
+<canvas id="fx" aria-hidden="true"></canvas>
+<div id="ghosts" aria-hidden="true"></div>
+<div id="callouts" aria-hidden="true"></div>
+<div id="aura-pops" aria-hidden="true"></div>
+<div class="combo" id="combo" aria-hidden="true"></div>
+<div class="shockwave" id="shockwave" aria-hidden="true"></div>
+<div class="kaching" id="kaching" aria-hidden="true"></div>
+<div class="moai" id="moai" aria-hidden="true">&#128511;</div>
+
+<div class="cookie" id="cookie" role="region" aria-label="Cookie consent" hidden>
+  <p><strong>&#127850; We use cookies</strong> to compute, store, sell, re-compute and fanum tax your arithmetic. No cap &#129506;</p>
+  <div class="cookie__actions">
+    <button class="cookie__accept" id="cookie-accept">Accept all</button>
+    <button class="cookie__accept cookie__accept--alt" id="cookie-accept-2">Also accept all (W)</button>
+    <button class="cookie__manage" id="cookie-manage">Manage preferences</button>
+  </div>
+</div>
+
+<button class="gary-bubble" id="gary-bubble" hidden aria-expanded="false" aria-controls="gary">
+  <span aria-hidden="true">&#128172;</span> Chat with Gary <span class="gary-bubble__dot" id="gary-dot">1</span>
+</button>
+
+<section class="gary" id="gary" hidden aria-label="Chat with Gary">
+  <header class="gary__head">
+    <span class="gary__avatar" aria-hidden="true">G</span>
+    <span class="gary__who">Gary <small>Dedicated Account Manager &middot; does not know math &middot; &minus;4,000 aura</small></span>
+    <button class="gary__close" id="gary-close" aria-label="Close chat">&#10005;</button>
+  </header>
+  <div class="gary__log" id="gary-log" aria-live="polite"></div>
+  <div class="gary__replies" id="gary-replies"></div>
+</section>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div id="trail" aria-hidden="true"></div>
 
 <div class="modal-backdrop" id="modal-backdrop" hidden>
   <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"></div>
@@ -882,12 +1994,14 @@ body.free-tier .calc  { box-shadow: 10px 10px 0 var(--lime), 20px 20px 0 var(--o
 (function () {
   "use strict";
 
+  document.body.classList.add("mode-calc");
+
   /* ---------------------------------------------------------
      Motion preference. Read live via .matches so a mid-session
      OS change is honoured without a reload.
      --------------------------------------------------------- */
   var motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-  function calm() { return motionQuery.matches; }
+  function calm() { return motionQuery.matches || document.body.classList.contains("calm-mode"); }
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -1001,6 +2115,8 @@ body.free-tier .calc  { box-shadow: 10px 10px 0 var(--lime), 20px 20px 0 var(--o
   }
 
   function fail() {
+    unlock("zero");
+    onZero();
     errored = true;
     current = "NOPE";
     accumulator = null;
@@ -1051,7 +2167,7 @@ body.free-tier .calc  { box-shadow: 10px 10px 0 var(--lime), 20px 20px 0 var(--o
 
   function burst(x, y) {
     if (calm()) return;
-    for (var i = 0; i < 7; i++) {
+    for (var i = 0, n = burstSize(); i < n; i++) {
       var el = pool[poolIndex % POOL_SIZE];
       poolIndex++;
       var angle = Math.random() * Math.PI * 2;
@@ -1104,7 +2220,7 @@ body.free-tier .calc  { box-shadow: 10px 10px 0 var(--lime), 20px 20px 0 var(--o
     muteToggle.innerHTML = muted
       ? "\u{1F50A} UNMUTE FOR THE FULL EXPERIENCE"
       : "\u{1F507} ok that was a mistake, mute it";
-    if (!muted) blip(660);
+    if (!muted) { blip(660); unlock("ears"); }
   });
 
   /* =========================================================
@@ -1134,6 +2250,7 @@ body.free-tier .calc  { box-shadow: 10px 10px 0 var(--lime), 20px 20px 0 var(--o
         blip(880);
         equals();
       }
+      afterPress(key);
       ev.preventDefault();
     });
   });
@@ -1243,6 +2360,8 @@ body.free-tier .calc  { box-shadow: 10px 10px 0 var(--lime), 20px 20px 0 var(--o
       var s = String(countdownSeconds % 60).padStart(2, "0");
       $("countdown").textContent = m + ":" + s;
     }, 1000);
+
+    onPaywall(result);
   }
 
   function showCalculator() {
@@ -1254,6 +2373,7 @@ body.free-tier .calc  { box-shadow: 10px 10px 0 var(--lime), 20px 20px 0 var(--o
     window.scrollTo(0, 0);
     var eq = document.querySelector(".key--equals");
     if (eq) eq.focus();
+    onFreeTier();
   }
 
   // Buying is a dead end. No fields, no inputs, nothing collected.
@@ -1261,10 +2381,11 @@ body.free-tier .calc  { box-shadow: 10px 10px 0 var(--lime), 20px 20px 0 var(--o
     btn.addEventListener("click", function () {
       var rect = btn.getBoundingClientRect();
       burst(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      unlock("buy"); addAura(-999, null, "(declined \u{1F480})");
       openModal(
         '<h2 id="modal-title">\u{1F6AB} PAYMENT DECLINED</h2>' +
-        "<p>Your money is not absurd enough.</p>" +
-        '<p class="tiny">Error 402.7: insufficient whimsy. Please try again with a funnier amount.</p>' +
+        "<p>Your money is not absurd enough. Skill issue \u{1F480}</p>" +
+        '<p class="tiny">Error 402.7: insufficient aura. Please try again with a funnier amount.</p>' +
         '<button class="modal__stay" data-close>BACK TO THE PLANS</button>'
       );
       modal.querySelector("[data-close]").addEventListener("click", closeModal);
@@ -1286,7 +2407,7 @@ body.free-tier .calc  { box-shadow: 10px 10px 0 var(--lime), 20px 20px 0 var(--o
     var w = noThanks.offsetWidth  || 80;
     var h = noThanks.offsetHeight || 20;
     var x = pad + Math.random() * Math.max(0, window.innerWidth  - w - pad * 2);
-    var y = pad + Math.random() * Math.max(0, window.innerHeight - h - pad * 2);
+    var y = 60 + Math.random() * Math.max(0, window.innerHeight - h - 60 - 150);
     noThanks.style.position = "fixed";
     noThanks.style.left = Math.round(x) + "px";
     noThanks.style.top  = Math.round(y) + "px";
@@ -1296,30 +2417,30 @@ body.free-tier .calc  { box-shadow: 10px 10px 0 var(--lime), 20px 20px 0 var(--o
 
   var STAGES = [
     {
-      title: "\u{1F6D1} Wait! Are you sure?",
-      body: "You were <em>this</em> close to unlocking your answer. It's right there. We're holding it.",
+      title: "\u{1F6D1} Wait! Are you sure? Chat, is this real? \u{1F62D}",
+      body: "You were <em>this</em> close to unlocking your answer. It's right there. We're holding it. Leaving now is <strong>&minus;1000 aura</strong>.",
       tiny: "Most users who leave never learn what 7 &times; 8 is.",
-      stay: "OK I'LL STAY",
-      leave: "i'm evil and i hate math"
+      stay: "OK I'LL STAY (W)",
+      leave: "i'm evil and i hate math (L)"
     },
     {
-      title: "\u{1F62D}",
-      body: "The calculator will remember this.",
+      title: "\u{1F62D}\u{1F940}",
+      body: "The calculator will remember this. It's giving betrayal.",
       tiny: "It has a very long memory and absolutely nothing else to do.",
       stay: "ok i take it back, i'm sorry",
-      leave: "let it remember"
+      leave: "let it remember (no cap)"
     },
     {
       title: "\u{1F381} FINAL OFFER: 99.9% OFF!",
-      body: "We've never done this for anyone. We're doing it for you. Right now. Only you. And the other 12,847 people.",
+      body: "We've never done this for anyone. We're doing it for you. Right now. Only you. And the other 12,847 sigmas.",
       tiny: "*Discount applies to the second year of a mandatory forty-year term.",
-      stay: "WOW! TAKE MY MONEY!",
-      leave: "no"
+      stay: "WOW! TAKE MY MONEY! (W rizz)",
+      leave: "no (based)"
     }
   ];
 
   function runGauntlet(stageIndex) {
-    if (stageIndex >= STAGES.length) { runCancellation(); return; }
+    if (stageIndex >= STAGES.length) { runCaptcha(); return; }
 
     var s = STAGES[stageIndex];
     openModal(
@@ -1352,11 +2473,11 @@ body.free-tier .calc  { box-shadow: 10px 10px 0 var(--lime), 20px 20px 0 var(--o
     // Fills to 97%, then thinks better of it and runs backwards.
     var script = [
       { at: 100,  v: 12, note: "Locating your subscription&hellip;" },
-      { at: 900,  v: 58, note: "Consulting Gary&hellip;" },
-      { at: 1800, v: 97, note: "Almost done! Finalizing&hellip;" },
-      { at: 2900, v: 41, note: "Hmm. That's not right." },
-      { at: 3800, v: 12, note: "Recalculating regret&hellip;" },
-      { at: 4700, v: 3,  note: "Honestly, this is going worse than expected." }
+      { at: 900,  v: 58, note: "Faxing Liechtenstein&hellip; &#128224; (no answer)" },
+      { at: 1800, v: 97, note: "Almost done! Let him cook&hellip;" },
+      { at: 2900, v: 41, note: "Hmm. That's not right. &#129320;" },
+      { at: 3800, v: 12, note: "Recalculating regret&hellip; it's over" },
+      { at: 4700, v: 3,  note: "Honestly? We're cooked." }
     ];
 
     var speed = calm() ? 0.45 : 1;
@@ -1372,7 +2493,7 @@ body.free-tier .calc  { box-shadow: 10px 10px 0 var(--lime), 20px 20px 0 var(--o
     later(function () {
       openModal(
         '<h2 id="modal-title">fine. go.</h2>' +
-        "<p>Your cancellation is complete. You have been downgraded to <strong>FREE TIER</strong>.</p>" +
+        "<p>Your cancellation is complete. You have been downgraded to <strong>FREE TIER</strong>. L + ratio.</p>" +
         '<p class="tiny">Free tier includes: the buttons. Not the answers. The buttons.</p>' +
         '<button class="modal__stay" data-out>back to my sad free calculator</button>'
       );
@@ -1397,6 +2518,1172 @@ body.free-tier .calc  { box-shadow: 10px 10px 0 var(--lime), 20px 20px 0 var(--o
   $("visitor").textContent = String(
     1000000 + Math.floor(Math.random() * 8999999)
   ).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+  /* =========================================================
+     9. v2: EVERYTHING ELSE
+     ========================================================= */
+
+  function pick(list) { return list[(Math.random() * list.length) | 0]; }
+
+  function shuffle(list) {
+    var a = list.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = (Math.random() * (i + 1)) | 0;
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  // Per-viewer conveniences only. The page works the same without storage.
+  var store = {
+    get: function (key, fallback) {
+      try {
+        var raw = localStorage.getItem("megacalc:" + key);
+        return raw === null ? fallback : JSON.parse(raw);
+      } catch (e) { return fallback; }
+    },
+    set: function (key, value) {
+      try { localStorage.setItem("megacalc:" + key, JSON.stringify(value)); } catch (e) {}
+    }
+  };
+
+  /* ---------- toasts (never more than 3 in the DOM) ---------- */
+
+  var toastBox = $("toasts");
+
+  function toast(icon, title, body, kind) {
+    var el = document.createElement("div");
+    el.className = "toast" + (kind ? " toast--" + kind : "");
+    // Fake social proof every few seconds is not worth a screen reader's time.
+    if (kind === "fomo") el.setAttribute("aria-hidden", "true");
+    el.innerHTML =
+      '<span class="toast__icon" aria-hidden="true">' + icon + "</span>" +
+      "<span><strong>" + title + "</strong>" + body + "</span>";
+    toastBox.appendChild(el);
+    while (toastBox.children.length > 3) toastBox.removeChild(toastBox.firstChild);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 4200);
+  }
+
+  /* ---------- achievements ---------- */
+
+  var ACH = {
+    first:    ["\u{1F3C6}", "First Number",           "You pressed a number. W. Most people do."],
+    seven:    ["7\uFE0F\u20E3", "Premium Digit",      "7 is a Pro feature. You've been fanum taxed $0.07."],
+    ten:      ["\u231B", "Trial Expired",             "10 presses. Your free trial has ended. It was never free, no cap."],
+    fifty:    ["\u{1F9BE}", "Sigma Grindset",         "50 presses. Your wrist has filed a complaint."],
+    mash:     ["\u{1F528}", "Button Masher",          "8 presses in 2 seconds. Bro is NOT calm \u{1F480}"],
+    max:      ["\u{1F30B}", "MAXIMUM BRAINROT",       "Brainrot meter maxed. Legal says this is fine."],
+    zero:     ["\u{1F694}", "Forbidden Arithmetic",   "You tried to divide by zero. Only in Ohio. Gary has been notified."],
+    paywall:  ["\u{1F512}", "So Close",               "You computed an answer. Seeing it is a separate product. Skill issue."],
+    again:    ["\u{1F501}", "Glutton for Punishment", "You came back to the paywall on purpose. Chat, is this real?"],
+    answer42: ["\u{1F30C}", "The Answer",             "Your result is 42. You still can't see it."],
+    big:      ["\u{1F418}", "Big Number Energy",      "Over a billion. That's a 10-digit plan, minimum."],
+    buy:      ["\u{1F4B3}", "Big Spender",            "You tried to pay. Declined for your own protection."],
+    annual:   ["\u{1F4C5}", "Long-Term Thinker",      "You looked at annual billing. It costs more. Obviously."],
+    peek:     ["\u{1F440}", "Window Shopper",         "Out of free previews. They're $4.99 each now."],
+    human:    ["\u{1F916}", "Not a Clanker",          "Passed a CAPTCHA by failing it twice."],
+    escape:   ["\u{1F3C3}", "Escape Artist",          "You made it out. The calculator saw everything."],
+    ad:       ["\u{1F648}", "Ad Blocker",             "You closed an ad. It came back. It always comes back."],
+    cookies:  ["\u{1F36A}", "Cookie Monster",         "You accepted all cookies. All of them. Forever."],
+    gary:     ["\u260E\uFE0F", "Made Contact",        "You yapped with Gary. Gary hasn't stopped smiling."],
+    ears:     ["\u{1F50A}", "Ears Engaged",           "You turned the sound on. You chose this."],
+    disco:    ["\u{1FAA9}", "Disco Inferno",          "Brainrot hit MAXIMUM. The disco ball descended."],
+    cheater:  ["\u{1F3AE}", "Cheat Code",             "\u2191\u2191\u2193\u2193\u2190\u2192\u2190\u2192BA. +\u221E aura. Still no answers."],
+    calm:     ["\u{1F60C}", "Touched Grass",          "You turned on calm mode. Respect. Genuinely."],
+    sixseven: ["\u{1F937}", "6 7",                    "You pressed 6 then 7. You know what you did."],
+    result67: ["\u{1F480}", "The Calculator Said It", "Your answer was 67. We can't show you, but we know."],
+    aurafarm: ["\u2728", "Aura Farmer",               "Reached 10,000 aura. Unc could never."],
+    auraneg:  ["\u{1F940}", "Negative Aura",          "Aura below \u22125,000. It's so over."]
+  };
+  var ACH_IDS = Object.keys(ACH);
+
+  var unlocked = store.get("achievements", {});
+  if (!unlocked || typeof unlocked !== "object") unlocked = {};
+
+  function unlockedCount() {
+    return ACH_IDS.filter(function (id) { return unlocked[id]; }).length;
+  }
+
+  function updateTrophies() {
+    $("trophy-count").textContent = String(unlockedCount());
+    $("trophy-total").textContent = String(ACH_IDS.length);
+  }
+
+  function unlock(id) {
+    if (!ACH[id] || unlocked[id]) return;
+    unlocked[id] = Date.now();
+    store.set("achievements", unlocked);
+    updateTrophies();
+    toast(ACH[id][0], "W \u00b7 Achievement unlocked", "<b>" + ACH[id][1] + "</b> &middot; " + ACH[id][2]);
+    fxConfetti(window.innerWidth - 170, 70, 24, 1.4, Math.PI / 2, 0.6);
+  }
+
+  $("trophy-btn").addEventListener("click", function () {
+    var rows = ACH_IDS.map(function (id) {
+      var a = ACH[id];
+      var got = !!unlocked[id];
+      return '<li class="' + (got ? "got" : "") + '">' +
+        '<span class="ach__icon" aria-hidden="true">' + (got ? a[0] : "❔") + "</span>" +
+        "<span><strong>" + (got ? a[1] : "Locked") + "</strong>" +
+        (got ? a[2] : "Keep doing things you shouldn't.") + "</span></li>";
+    }).join("");
+    openModal(
+      '<h2 id="modal-title">\u{1F3C6} Achievements</h2>' +
+      '<p class="tiny">' + unlockedCount() + " of " + ACH_IDS.length +
+        " unlocked. Each one is worth exactly $0.00.</p>" +
+      '<ul class="ach-list">' + rows + "</ul>" +
+      '<button class="modal__stay" data-close>Back to math</button>'
+    );
+    modal.scrollTop = 0;
+    modal.querySelector("[data-close]").addEventListener("click", closeModal);
+  });
+
+  /* ---------- chaos meter ---------- */
+
+  var CHAOS_TIERS = [[0, "Mid \u{1F610}"], [25, "Lowkey bussin"], [50, "Unhinged \u{1F480}"], [80, "MAXIMUM BRAINROT \u{1F5FF}"]];
+  var chaos = 0;
+
+  function chaosTier() {
+    var tier = 1;
+    for (var i = 0; i < CHAOS_TIERS.length; i++) {
+      if (chaos >= CHAOS_TIERS[i][0]) tier = i + 1;
+    }
+    return tier;
+  }
+
+  function setChaos(value) {
+    chaos = Math.max(0, Math.min(100, value));
+    var tier = chaosTier();
+    var label = CHAOS_TIERS[tier - 1][1];
+    var meter = $("chaos");
+    $("chaos-fill").style.width = chaos + "%";
+    $("chaos-label").textContent = label;
+    meter.setAttribute("aria-valuenow", String(Math.round(chaos)));
+    meter.setAttribute("aria-valuetext", label);
+    document.body.setAttribute("data-chaos", String(tier));
+    if (tier === 4) unlock("disco");
+    if (chaos >= 100) unlock("max");
+  }
+
+  // Leave it alone and it calms down on its own.
+  setInterval(function () { if (chaos > 0) setChaos(chaos - 1); }, 1500);
+
+  function burstSize() { return [7, 10, 13, 16][chaosTier() - 1]; }
+
+  /* ---------- every keypress ---------- */
+
+  var SPONSORS = [
+    "the Ohio Board of Arithmetic", "Larsen & Sons", "BLORPCO", "Skibidi Holdings LLC", "Fiduciary Dynamics",
+    "HEXADYNE", "7 (you know why)", "6 (you know why)", "Big Eight\u2122 (licensed, not sold)", "Sigma Grindset Capital"
+  ];
+  var EQ_LABELS = ["=", "= (go on)", "= PRESS ME", "= \u2728 FREE ANSWER* \u2728", "= (*not free)", "= let him cook", "= \u{1F5FF}", "= 6 7??"];
+  var eqKey = document.querySelector(".key--equals");
+  var pressCount = 0;
+  var recentPresses = [];
+  var sinceEquals = 0;
+
+  function afterPress(key) {
+    var now = Date.now();
+    pressCount++;
+    recentPresses.push(now);
+    recentPresses = recentPresses.filter(function (t) { return now - t < 2000; });
+    setChaos(chaos + 4);
+
+    if (pressCount === 1) unlock("first");
+    if (pressCount === 10) unlock("ten");
+    if (pressCount === 50) unlock("fifty");
+    if (recentPresses.length >= 8) unlock("mash");
+
+    var digit = key.dataset.digit;
+    if (digit !== undefined) {
+      if (digit === "7") unlock("seven");
+      $("sponsor").textContent = "this " + digit + " was brought to you by " + SPONSORS[Number(digit)];
+    }
+
+    if (key.dataset.action === "equals") {
+      sinceEquals = 0;
+      eqKey.textContent = "=";
+    } else {
+      sinceEquals++;
+      if (sinceEquals % 4 === 0) {
+        eqKey.textContent = EQ_LABELS[Math.min(EQ_LABELS.length - 1, sinceEquals / 4)];
+      }
+    }
+
+    fxPress(key);
+  }
+
+  /* ---------- keyboard ---------- */
+
+  var KEYMAP = {
+    "+": '[data-op="+"]', "-": '[data-op="-"]', "*": '[data-op="*"]', "x": '[data-op="*"]', "X": '[data-op="*"]',
+    "/": '[data-op="/"]', ".": '[data-action="dot"]', ",": '[data-action="dot"]',
+    "Enter": '[data-action="equals"]', "=": '[data-action="equals"]',
+    "c": '[data-action="clear"]', "C": '[data-action="clear"]', "Delete": '[data-action="clear"]',
+    "Backspace": "backspace"
+  };
+
+  function backspace() {
+    if (errored || awaitingOperand || current === "\u{1F512}") return;
+    current = current.length > 1 ? current.slice(0, -1) : "0";
+    if (current === "-") current = "0";
+    blip(200);
+    render();
+  }
+
+  document.addEventListener("keydown", function (ev) {
+    if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    if (!backdrop.hidden || calcScreen.hidden) return;
+    var target = ev.target instanceof Element ? ev.target : null;
+    if (target && target.closest("#gary, #cookie")) return;
+    // Enter and Space keep their usual meaning on every control except the keypad.
+    if ((ev.key === "Enter" || ev.key === " ") && target &&
+        target.closest("button, a") && !target.closest(".key")) return;
+
+    var sel = /^[0-9]$/.test(ev.key) ? '[data-digit="' + ev.key + '"]' : KEYMAP[ev.key];
+    if (!sel) return;
+    ev.preventDefault();
+    if (sel === "backspace") { backspace(); return; }
+
+    var el = document.querySelector(sel);
+    if (!el) return;
+    el.classList.add("is-pressed");
+    setTimeout(function () { el.classList.remove("is-pressed"); }, 150);
+    el.click();
+  });
+
+  /* ---------- Gary ---------- */
+
+  var gary = $("gary");
+  var garyBubble = $("gary-bubble");
+  var garyLog = $("gary-log");
+  var garyReplies = $("gary-replies");
+  var garyStarted = false;
+  var garyBusy = false;
+
+  var GARY = [
+    { q: "What's 7 \u00d7 8?", a: ["Great question! \u{1F64C} No cap.", "Let me check with The Algorithm.",
+        "The Algorithm is a spreadsheet, and it's closed on Thursdays.", "Is it Thursday? It feels like a Thursday \u{1F480}"] },
+    { q: "How do I cancel?", a: ["Cancelling is super easy, fr fr! \u{1F60A}", "Just fax us a notarised request.",
+        "Do you have a fax machine? We don't either. It's giving 2004."] },
+    { q: "Are you a real person?", a: ["I'm exactly as real as your free trial! \u{1F642}",
+        "Not a clanker though. Pinky promise. \u{1F916}\u274C"] },
+    { q: "Can I talk to someone who knows math?", a: ["Of course! Transferring you to Tung Tung Tung Sahur\u2026 \u260E\uFE0F", "\u2026",
+        "He also doesn't know math. I'm back! We're so back!"] },
+    { q: "Just tell me the answer", a: ["I wish I could! \u{1F62C}", "Legal says the answer is a premium asset.",
+        "I can confirm it's a number. I've said too much. \u{1F92B}"] },
+    { q: "Gary, what's your aura?", a: ["My aura is \u22124,000. \u{1F940}", "I spent it all on a fax machine."] },
+    { q: "Gary say 6 7", a: ["6\u2026", "7\u2026? \u{1F937}", "Is that right? I don't know math."] },
+    { q: "Do you like working here?", a: ["I love it here!! \u{1F603} It's bussin.", "If you can read this, please blink twice.",
+        "Haha. Anyway! Have you considered Mathemagician Pro?"] }
+  ];
+
+  function addMessage(who, text, extra) {
+    var m = document.createElement("p");
+    m.className = "msg msg--" + who + (extra ? " msg--" + extra : "");
+    m.textContent = text;
+    garyLog.appendChild(m);
+    garyLog.scrollTop = garyLog.scrollHeight;
+    return m;
+  }
+
+  // aria-disabled rather than disabled, so a focused chip keeps focus.
+  function setRepliesBusy(flag) {
+    garyReplies.querySelectorAll("button").forEach(function (b) {
+      b.setAttribute("aria-disabled", String(flag));
+    });
+  }
+
+  function garySays(lines, done) {
+    garyBusy = true;
+    setRepliesBusy(true);
+    var i = 0;
+    (function next() {
+      if (i >= lines.length) {
+        garyBusy = false;
+        setRepliesBusy(false);
+        if (done) done();
+        return;
+      }
+      var typing = addMessage("gary", "Gary is typing…", "typing");
+      setTimeout(function () {
+        if (typing.parentNode) typing.parentNode.removeChild(typing);
+        addMessage("gary", lines[i++]);
+        next();
+      }, calm() ? 300 : 950);
+    })();
+  }
+
+  function renderReplies() {
+    garyReplies.innerHTML = "";
+    GARY.forEach(function (item) {
+      if (item.used) return;
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "reply";
+      b.textContent = item.q;
+      b.setAttribute("aria-disabled", String(garyBusy));
+      b.addEventListener("click", function () {
+        if (garyBusy) return;
+        item.used = true;
+        addMessage("me", item.q);
+        renderReplies();
+        var nextChip = garyReplies.querySelector("button");
+        (nextChip || $("gary-close")).focus();
+        unlock("gary");
+        addAura(-50, null, "(yapping)");
+        garySays(item.a, function () {
+          if (GARY.every(function (g) { return g.used; })) {
+            garySays(["That's every question on the free plan! \u{1F64C}",
+                      "Mathemagician Pro unlocks up to 3 more questions. No cap."]);
+          }
+        });
+      });
+      garyReplies.appendChild(b);
+    });
+  }
+
+  function openGary() {
+    gary.hidden = false;
+    garyBubble.setAttribute("aria-expanded", "true");
+    $("gary-dot").hidden = true;
+    if (!garyStarted) {
+      garyStarted = true;
+      renderReplies();
+      garySays(["Hi! \u{1F44B} I'm Gary, your dedicated account manager.",
+                "I see you're doing math. How can I help, chat? \u{1F64F}"]);
+    }
+    (garyReplies.querySelector("button") || $("gary-close")).focus();
+  }
+
+  function closeGary() {
+    gary.hidden = true;
+    garyBubble.setAttribute("aria-expanded", "false");
+    garyBubble.focus();
+  }
+
+  garyBubble.addEventListener("click", function () {
+    if (gary.hidden) openGary(); else closeGary();
+  });
+  $("gary-close").addEventListener("click", closeGary);
+  gary.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape") { ev.stopPropagation(); closeGary(); }
+  });
+
+  /* ---------- cookies ---------- */
+
+  var cookie = $("cookie");
+  var garyQueued = false;
+
+  function acceptCookies() {
+    cookie.hidden = true;
+    unlock("cookies");
+    addAura(-500, null, "(bro accepted cookies \u{1F480})");
+    // Gary waits politely until you've agreed to everything.
+    if (!garyQueued) {
+      garyQueued = true;
+      setTimeout(function () { garyBubble.hidden = false; }, 4000);
+    }
+  }
+
+  setTimeout(function () { cookie.hidden = false; }, 900);
+  $("cookie-accept").addEventListener("click", acceptCookies);
+  $("cookie-accept-2").addEventListener("click", acceptCookies);
+
+  $("cookie-manage").addEventListener("click", function () {
+    addAura(200, null, "(rebel)");
+    var kinds = [
+      "Strictly necessary cookies", "Arithmetic cookies", "Skibidi cookies", "Cookies that track your aura",
+      "Gary's personal cookies", "Cookies that track the other cookies", "The chocolate chip ones"
+    ];
+    openModal(
+      '<h2 id="modal-title">\u{1F36A} Cookie preferences</h2>' +
+      '<p class="tiny">Choose exactly which cookies we use. Your choices are very important to us.</p>' +
+      '<ul class="switches">' + kinds.map(function (k) {
+        return "<li><span>" + k + '</span><button class="switch" role="switch" aria-checked="true" aria-label="' +
+          k + '"></button></li>';
+      }).join("") + "</ul>" +
+      '<button class="modal__stay" data-save>Save my choices</button>' +
+      '<button class="modal__leave" data-all>accept all</button>'
+    );
+    modal.querySelectorAll(".switch").forEach(function (sw) {
+      sw.addEventListener("click", function () {
+        sw.setAttribute("aria-checked", "false");
+        later(function () {
+          sw.setAttribute("aria-checked", "true");
+          var label = sw.previousElementSibling;
+          if (label.textContent.indexOf("(required)") === -1) label.textContent += " (required)";
+        }, 650);
+      });
+    });
+    modal.querySelector("[data-save]").addEventListener("click", function () { closeModal(); acceptCookies(); });
+    modal.querySelector("[data-all]").addEventListener("click", function () { closeModal(); acceptCookies(); });
+  });
+
+  /* ---------- paywall extras ---------- */
+
+  var PRICES = {
+    monthly: {
+      casual: ['$499.99<span style="font-size:.5em">/day</span>', "billed every 4 hours, in advance, forever"],
+      pro:    ['$9,999.99<span style="font-size:.5em">/week</span>',
+               "plus 14.7% of your lifetime gross earnings &bull; auto-renews every 11 seconds"],
+      ent:    "$((47,281 &times; 3.5) &divide; 0.07) + 19.99"
+    },
+    annual: {
+      casual: ['$182,508.35<span style="font-size:.5em">/year</span>',
+               "still billed every 4 hours. You save &minus;$12.00 (that's the annual fee)"],
+      pro:    ['$529,999.47<span style="font-size:.5em">/year</span>',
+               "that's 53 weeks. We added a bonus week, just for you"],
+      ent:    "($((47,281 &times; 3.5) &divide; 0.07) + 19.99) &times; 4 + &pi;"
+    }
+  };
+
+  function setBilling(period) {
+    var p = PRICES[period];
+    $("price-casual").innerHTML = p.casual[0];
+    $("cad-casual").innerHTML = p.casual[1];
+    $("price-pro").innerHTML = p.pro[0];
+    $("cad-pro").innerHTML = p.pro[1];
+    $("price-ent").innerHTML = p.ent;
+    $("bill-monthly").setAttribute("aria-pressed", String(period === "monthly"));
+    $("bill-annual").setAttribute("aria-pressed", String(period === "annual"));
+    if (period === "annual") unlock("annual");
+  }
+
+  $("bill-monthly").addEventListener("click", function () { setBilling("monthly"); });
+  $("bill-annual").addEventListener("click", function () { setBilling("annual"); });
+
+  var PEEKS = [
+    "It's a number. No cap.",
+    "It's giving\u2026 digits.",
+    "It's bigger than \u2212\u221E and smaller than \u221E. Trust.",
+    "Gary knows. Gary is mewing and can't talk. \u{1F92B}"
+  ];
+  var peeksUsed = 0;
+
+  $("peek-btn").addEventListener("click", function () {
+    var hint = $("peek-hint");
+    if (peeksUsed < PEEKS.length) {
+      hint.textContent = "Free preview " + (peeksUsed + 1) + " of " + PEEKS.length + ": " + PEEKS[peeksUsed];
+      peeksUsed++;
+    } else {
+      hint.textContent = "You're out of free previews. More previews are $4.99 each. Skill issue.";
+      unlock("peek");
+    }
+  });
+
+  function declined(title, body) {
+    openModal(
+      '<h2 id="modal-title">' + title + "</h2>" +
+      "<p>" + body + "</p>" +
+      '<button class="modal__stay" data-close>BACK TO THE PLANS</button>'
+    );
+    modal.querySelector("[data-close]").addEventListener("click", closeModal);
+  }
+
+  $("pay-crypto").addEventListener("click", function () {
+    unlock("buy"); addAura(-999, null, "(declined \u{1F480})");
+    declined("\u{1FA99} Transaction failed",
+      "$MATH is down 99.97% since you opened this page. Your wallet now holds &minus;0.3 $MATH. It's so over.");
+  });
+
+  $("pay-soul").addEventListener("click", function () {
+    unlock("buy"); addAura(-999, null, "(declined \u{1F480})");
+    declined("\u{1F47B} Soul declined",
+      "We only accept souls on the Enterprise plan, and yours is still on a free trial. \u{1F940}");
+  });
+
+  var FOMO_WHO = [
+    "Sarah K. in Brisbane", "Marcus T. in Leeds", "Priya R. in Toronto", "a sigma in Ohio",
+    "Tralalero Tralala in Milan", "Ballerina Cappuccina in Rome", "Bombardiro Crocodilo (airborne)",
+    "an unc in Perth", "Tung Tung Tung Sahur", "Gary (testing)"
+  ];
+  var FOMO_WHAT = [
+    "bought Mathemagician Pro", "upgraded to Enterprise", "paid for the number 7", "unlocked subtraction",
+    "bought +1000 aura", "paid the fanum tax", "unlocked 6 7 (Pro only)", "signed a 40-year term",
+    "started a 0-day free trial", "faxed us (we didn't get it)"
+  ];
+  var fomoTimer = null;
+
+  function startFomo() {
+    stopFomo();
+    fomoTimer = setInterval(function () {
+      toast("\u{1F525}", pick(FOMO_WHO) + " · " + (2 + ((Math.random() * 58) | 0)) + "s ago",
+            "just " + pick(FOMO_WHAT) + ".", "fomo");
+    }, 5500);
+  }
+
+  function stopFomo() {
+    if (fomoTimer) { clearInterval(fomoTimer); fomoTimer = null; }
+  }
+
+  var paywallVisits = 0;
+
+  function onPaywall(result) {
+    paywallVisits++;
+    unlock(paywallVisits === 1 ? "paywall" : "again");
+    if (result === "42") unlock("answer42");
+    var n = Number(result);
+    if (isFinite(n) && Math.abs(n) >= 1e9) unlock("big");
+    $("peek-hint").textContent = "";
+    startFomo();
+    fxPaywall(result);
+  }
+
+  /* ---------- free tier ---------- */
+
+  var ADS = [
+    "\u{1F525} HOT SINGLE DIGITS IN OHIO",
+    "\u{1F6BD} SKIBIDI ARITHMETIC: NEW EPISODE EVERY DIGIT",
+    "Doctors HATE this one sigma integer",
+    "You won't BELIEVE what 7 \u00d7 8 is (and you never will)",
+    "Local unc finds answer. Is immediately fanum taxed.",
+    "Is your calculator spying on you? (Yes. This one.) (No cap.)",
+    "+1000 AURA: tap here (don't tap here)",
+    "Congratulations! You are our 1,000,000th sigma! (again)"
+  ];
+  var adIndex = 0;
+  var adTimer = null;
+
+  function nextAd() {
+    adIndex = (adIndex + 1) % ADS.length;
+    $("ad-text").textContent = ADS[adIndex];
+  }
+
+  $("ad-close").addEventListener("click", function () { nextAd(); unlock("ad"); addAura(1, null, ""); });
+
+  function onFreeTier() {
+    stopFomo();
+    unlock("escape");
+    addAura(10000, null, "W");
+    if (!adTimer) adTimer = setInterval(nextAd, 7000);
+  }
+
+  /* ---------- the CAPTCHA (gauntlet stage 4) ---------- */
+
+  // ٧ (Arabic-Indic) and \u{1D7D5} (mathematical bold) really are both sevens.
+  var CAPTCHA_DIGITS = ["7", "7", "1", "7", "4", "٧", "\u{1D7D5}", "9", "7"];
+  var CAPTCHA_FAILS = [
+    "Incorrect. One of those sevens was a 1 wearing a hat. Skill issue \u{1F480}",
+    "Incorrect. \u0667 and \u{1D7D5} are sevens too. Did you get them? Doesn't matter. L."
+  ];
+  var captchaFails = 0;
+
+  function runCaptcha() {
+    openModal(
+      '<h2 id="modal-title">\u{1F916} Prove you&rsquo;re not a clanker</h2>' +
+      "<p>Before you cancel, please confirm you're human.</p>" +
+      '<p class="tiny">Select every square that contains a <strong>7</strong>.</p>' +
+      '<div class="captcha" role="group" aria-label="Captcha squares">' +
+        shuffle(CAPTCHA_DIGITS).map(function (d) {
+          return '<button class="captcha__cell" aria-pressed="false">' + d + "</button>";
+        }).join("") +
+      "</div>" +
+      '<p class="captcha__msg" data-msg aria-live="polite"></p>' +
+      '<button class="modal__stay" data-verify>VERIFY</button>' +
+      '<button class="modal__leave" data-keep>never mind, i\'ll stay subscribed</button>'
+    );
+
+    var cells = modal.querySelectorAll(".captcha__cell");
+    cells.forEach(function (cell) {
+      cell.addEventListener("click", function () {
+        cell.setAttribute("aria-pressed", String(cell.getAttribute("aria-pressed") !== "true"));
+      });
+    });
+
+    modal.querySelector("[data-keep]").addEventListener("click", closeModal);
+    modal.querySelector("[data-verify]").addEventListener("click", function () {
+      if (captchaFails < CAPTCHA_FAILS.length) {
+        modal.querySelector("[data-msg]").textContent = CAPTCHA_FAILS[captchaFails++];
+        var digits = shuffle(CAPTCHA_DIGITS);
+        cells.forEach(function (cell, i) {
+          cell.textContent = digits[i];
+          cell.setAttribute("aria-pressed", "false");
+        });
+        return;
+      }
+      captchaFails = 0;
+      unlock("human");
+      closeModal();
+      runCancellation();
+    });
+  }
+
+  /* ---------- welcome back ---------- */
+
+  var visits = (Number(store.get("visits", 0)) || 0) + 1;
+  store.set("visits", visits);
+  if (visits > 1) {
+    $("visit-note").textContent = "welcome back! visit #" + visits + " \u00b7 answers revealed so far: 0 \u00b7 still no cap";
+  }
+
+  /* ---------- cursor trail (fixed pool, mouse only) ---------- */
+
+  var TRAIL = ["✨", "⭐", "\u{1F4AB}", "✦"];
+  var trailPool = [];
+  var trailIndex = 0;
+  var lastTrail = 0;
+
+  (function buildTrail() {
+    var layer = $("trail");
+    for (var i = 0; i < 24; i++) {
+      var s = document.createElement("span");
+      s.className = "trail";
+      layer.appendChild(s);
+      trailPool.push(s);
+    }
+  })();
+
+  document.addEventListener("mousemove", function (ev) {
+    if (calm()) return;
+    var now = Date.now();
+    if (now - lastTrail < 45) return;
+    lastTrail = now;
+    var el = trailPool[trailIndex % trailPool.length];
+    trailIndex++;
+    el.textContent = TRAIL[trailIndex % TRAIL.length];
+    el.style.left = ev.clientX + "px";
+    el.style.top = ev.clientY + "px";
+    el.classList.remove("go");
+    void el.offsetWidth;
+    el.classList.add("go");
+  }, { passive: true });
+
+  setChaos(0);
+  updateTrophies();
+
+  /* =========================================================
+     10. v3: OVERSTIMULATION + BRAINROT
+     ========================================================= */
+
+  function restart(el, cls) {
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
+  }
+
+  function centre() { return { x: window.innerWidth / 2, y: window.innerHeight * 0.42 }; }
+
+  /* ---------- sound (still muted by default) ---------- */
+
+  function ensureAudio() {
+    if (muted) return null;
+    try {
+      if (!audioCtx) {
+        var Ctor = window.AudioContext || window.webkitAudioContext;
+        if (!Ctor) return null;
+        audioCtx = new Ctor();
+      }
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      return audioCtx;
+    } catch (e) { return null; }
+  }
+
+  function airhorn() {
+    var ac = ensureAudio();
+    if (!ac) return;
+    try {
+      var t0 = ac.currentTime;
+      [466.16, 554.37, 698.46].forEach(function (f) {
+        var o = ac.createOscillator();
+        var g = ac.createGain();
+        o.type = "sawtooth";
+        o.frequency.setValueAtTime(f, t0);
+        o.frequency.linearRampToValueAtTime(f * 0.97, t0 + 0.7);
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.035, t0 + 0.03);
+        g.gain.setValueAtTime(0.035, t0 + 0.55);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.75);
+        o.connect(g);
+        g.connect(ac.destination);
+        o.start(t0);
+        o.stop(t0 + 0.8);
+      });
+    } catch (e) {}
+  }
+
+  function boom() {
+    var ac = ensureAudio();
+    if (!ac) return;
+    try {
+      var t0 = ac.currentTime;
+      var o = ac.createOscillator();
+      var g = ac.createGain();
+      o.type = "sine";
+      o.frequency.setValueAtTime(110, t0);
+      o.frequency.exponentialRampToValueAtTime(38, t0 + 0.6);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.5, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.9);
+      o.connect(g);
+      g.connect(ac.destination);
+      o.start(t0);
+      o.stop(t0 + 0.95);
+    } catch (e) {}
+  }
+
+  /* ---------- FX canvas: physics confetti, money rain, fireworks ---------- */
+
+  var fx = $("fx");
+  var g2d = fx.getContext("2d");
+  var fxParts = [];
+  var FX_MAX = 450;
+  var fxRunning = false;
+  var fxLast = 0;
+  var FX_COLORS = ["#ff2d95", "#00f0ff", "#b6ff00", "#ffe600", "#9d00ff", "#ff7a00", "#ffffff"];
+  var FX_EMOJI = ["\u{1F480}", "\u{1F5FF}", "\u{1F525}", "\u{1F62D}", "\u{1F4B8}", "✨", "\u{1F940}"];
+
+  function sizeFx() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    fx.width = Math.round(window.innerWidth * dpr);
+    fx.height = Math.round(window.innerHeight * dpr);
+    g2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  sizeFx();
+  window.addEventListener("resize", sizeFx);
+
+  function fxSpawn(p) {
+    if (fxParts.length >= FX_MAX) fxParts.shift();
+    fxParts.push(p);
+    if (!fxRunning) {
+      fxRunning = true;
+      fxLast = performance.now();
+      requestAnimationFrame(fxTick);
+    }
+  }
+
+  function fxTick(now) {
+    var dt = Math.min(0.033, Math.max(0, (now - fxLast) / 1000));
+    fxLast = now;
+    var w = window.innerWidth;
+    var h = window.innerHeight;
+    g2d.clearRect(0, 0, w, h);
+    for (var i = fxParts.length - 1; i >= 0; i--) {
+      var p = fxParts[i];
+      p.life += dt;
+      if (p.life >= p.ttl) { fxParts.splice(i, 1); continue; }
+      var drag = Math.pow(p.drag, dt);
+      p.vy += p.g * dt;
+      p.vx *= drag;
+      p.vy *= drag;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.rot += p.vr * dt;
+      if (p.bounce && p.y > h - 48) { p.y = h - 48; p.vy *= -p.bounce; p.vx *= 0.8; }
+      g2d.globalAlpha = Math.max(0, Math.min(1, (p.ttl - p.life) / 0.5));
+      if (p.kind === "rect") {
+        g2d.save();
+        g2d.translate(p.x, p.y);
+        g2d.rotate(p.rot);
+        g2d.fillStyle = p.color;
+        var tumble = Math.abs(Math.cos(p.rot * 1.7));
+        g2d.fillRect(-p.w / 2, -p.h * tumble / 2, p.w, p.h * tumble + 0.5);
+        g2d.restore();
+      } else if (p.kind === "dot") {
+        g2d.fillStyle = p.color;
+        g2d.beginPath();
+        g2d.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        g2d.fill();
+      } else {
+        g2d.save();
+        g2d.translate(p.x, p.y);
+        g2d.rotate(p.rot);
+        g2d.font = p.size + "px serif";
+        g2d.textAlign = "center";
+        g2d.textBaseline = "middle";
+        g2d.fillText(p.ch, 0, 0);
+        g2d.restore();
+      }
+    }
+    g2d.globalAlpha = 1;
+    if (fxParts.length) {
+      requestAnimationFrame(fxTick);
+    } else {
+      fxRunning = false;
+      g2d.clearRect(0, 0, w, h);
+    }
+  }
+
+  function fxConfetti(x, y, n, spread, angle, power) {
+    if (calm()) return;
+    for (var i = 0; i < n; i++) {
+      var a = angle + (Math.random() - 0.5) * spread * 2;
+      var speed = (320 + Math.random() * 480) * power;
+      var isEmoji = Math.random() < 0.18;
+      fxSpawn({
+        kind: isEmoji ? "emoji" : "rect",
+        ch: pick(FX_EMOJI), size: 18 + Math.random() * 14,
+        x: x, y: y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
+        g: 1300, drag: 0.35, bounce: 0,
+        w: 7 + Math.random() * 6, h: 4 + Math.random() * 6,
+        rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 14,
+        color: pick(FX_COLORS), life: 0, ttl: 1.8 + Math.random() * 1.1
+      });
+    }
+  }
+
+  function fxMoneyRain(n) {
+    if (calm()) return;
+    var w = window.innerWidth;
+    for (var i = 0; i < n; i++) {
+      fxSpawn({
+        kind: "emoji", ch: pick(["\u{1F4B8}", "\u{1F4B0}", "\u{1FA99}", "\u{1F4B5}", "\u{1F35F}"]),
+        size: 22 + Math.random() * 16,
+        x: Math.random() * w, y: -30 - Math.random() * 300,
+        vx: (Math.random() - 0.5) * 80, vy: 120 + Math.random() * 260,
+        g: 900, drag: 0.9, bounce: 0.45,
+        rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 6,
+        life: 0, ttl: 3 + Math.random()
+      });
+    }
+  }
+
+  function fxFirework(x, y) {
+    if (calm()) return;
+    var color = pick(FX_COLORS);
+    for (var i = 0; i < 46; i++) {
+      var a = (i / 46) * Math.PI * 2;
+      var speed = 180 + Math.random() * 240;
+      fxSpawn({
+        kind: "dot", x: x, y: y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
+        g: 260, drag: 0.3, bounce: 0, r: 2 + Math.random() * 2.5, rot: 0, vr: 0,
+        color: Math.random() < 0.3 ? "#ffffff" : color, life: 0, ttl: 1.1 + Math.random() * 0.5
+      });
+    }
+  }
+
+  /* ---------- fixed DOM pools (the DOM never grows) ---------- */
+
+  function makePool(containerId, cls, n) {
+    var layer = $(containerId);
+    var items = [];
+    for (var i = 0; i < n; i++) {
+      var el = document.createElement("span");
+      el.className = cls;
+      layer.appendChild(el);
+      items.push(el);
+    }
+    var at = 0;
+    return function next() { return items[at++ % items.length]; };
+  }
+
+  var nextGhost = makePool("ghosts", "ghost", 6);
+  var nextCallout = makePool("callouts", "callout", 4);
+  var nextAuraPop = makePool("aura-pops", "aura-pop", 8);
+
+  /* ---------- callouts ---------- */
+
+  var CALLOUTS = [
+    "SKIBIDI!", "+1000 AURA", "NO CAP", "BUSSIN", "SIGMA!", "OHIO MOMENT", "LET HIM COOK", "HE'S COOKING",
+    "W", "FANUM TAX!", "RIZZ", "GOATED \u{1F410}", "BRAINROT", "WE'RE SO BACK", "IT'S OVER \u{1F940}",
+    "CHAT IS THIS REAL", "TRALALERO TRALALA", "TUNG TUNG TUNG SAHUR", "BOMBARDIRO CROCODILO",
+    "SKILL ISSUE", "CAUGHT IN 4K", "TOUCH GRASS", "COOKED \u{1F480}", "NUMBERS GO BRRR",
+    "MATHEMATICAL!", "ARITHMAGEDDON", "CALCULATED.", "UNC STATUS", "AURA FARMING", "\u{1F5FF}\u{1F5FF}\u{1F5FF}"
+  ];
+  var CALLOUT_COLORS = ["var(--lime)", "var(--yellow)", "var(--cyan)", "var(--pink)", "var(--paper)"];
+  var lastCallout = 0;
+
+  function callout(text, huge) {
+    if (calm()) return;
+    var el = nextCallout();
+    el.textContent = text;
+    el.className = "callout" + (huge ? " callout--huge" : "");
+    // Huge callouts shrink with their length so long ones still fit on screen.
+    el.style.fontSize = huge ? "min(8rem, " + (150 / Math.max(5, text.length)).toFixed(1) + "vw)" : "";
+    el.style.left = (huge ? 50 : 22 + Math.random() * 56) + "%";
+    el.style.top = (huge ? 45 : 22 + Math.random() * 50) + "%";
+    el.style.setProperty("--r", ((Math.random() * 30) - 15).toFixed(0) + "deg");
+    el.style.color = pick(CALLOUT_COLORS);
+    restart(el, "go");
+  }
+
+  /* ---------- aura ---------- */
+
+  var aura = store.get("aura", 0);
+  aura = aura === "inf" ? Infinity : (Number(aura) || 0);
+
+  function fmtAura(a) {
+    if (!isFinite(a)) return "+∞";
+    return (a < 0 ? "−" : "+") + Math.abs(Math.round(a)).toLocaleString("en-US");
+  }
+
+  function renderAura() { $("aura").textContent = fmtAura(aura); }
+
+  function addAura(delta, at, note) {
+    aura = (delta === Infinity || !isFinite(aura)) ? Infinity : aura + delta;
+    store.set("aura", isFinite(aura) ? aura : "inf");
+    renderAura();
+    if (aura >= 10000) unlock("aurafarm");
+    if (aura <= -5000) unlock("auraneg");
+    if (calm()) return;
+    var pos = at || centre();
+    var el = nextAuraPop();
+    el.textContent = (delta === Infinity ? "+∞" : fmtAura(delta)) + " aura" + (note ? " " + note : "");
+    el.classList.toggle("neg", delta < 0);
+    el.style.left = pos.x + "px";
+    el.style.top = pos.y + "px";
+    restart(el, "go");
+  }
+
+  /* ---------- googly eyes ---------- */
+
+  var pupils = document.querySelectorAll(".pupil");
+  var lookX = 0;
+  var lookY = 0;
+  var lookFrame = 0;
+
+  function lookAt(x, y) {
+    lookX = x;
+    lookY = y;
+    if (lookFrame) return;
+    lookFrame = requestAnimationFrame(function () {
+      lookFrame = 0;
+      pupils.forEach(function (p) {
+        var r = p.parentNode.getBoundingClientRect();
+        var dx = lookX - (r.left + r.width / 2);
+        var dy = lookY - (r.top + r.height / 2);
+        var d = Math.hypot(dx, dy) || 1;
+        var m = Math.min(9, d / 10);
+        p.style.transform = "translate(" + (dx / d * m).toFixed(1) + "px, " + (dy / d * m).toFixed(1) + "px)";
+      });
+    });
+  }
+
+  document.addEventListener("mousemove", function (ev) { lookAt(ev.clientX, ev.clientY); }, { passive: true });
+
+  /* ---------- every keypress, but louder ---------- */
+
+  var comboEl = $("combo");
+  var combo = 0;
+  var comboTimer = null;
+  var lastGhost = 0;
+  var lastShake = 0;
+  var lastDigit = null;
+
+  function comboName(n) {
+    return n < 10 ? "COMBO" : n < 20 ? "SIGMA COMBO" : n < 35 ? "OHIO COMBO" : "BRAINROT COMBO";
+  }
+
+  function shake(amp) {
+    calcScreen.style.setProperty("--amp", amp + "px");
+    restart(calcScreen, "shake");
+  }
+
+  function ghostDigit(d) {
+    var r = displayValue.getBoundingClientRect();
+    var el = nextGhost();
+    el.textContent = d;
+    el.style.left = (r.right - 24) + "px";
+    el.style.top = (r.top + r.height / 2) + "px";
+    restart(el, "go");
+  }
+
+  function sixSeven() {
+    unlock("sixseven");
+    addAura(6767, null, "\u{1F937}");
+    if (calm()) return;
+    callout("6 7 \u{1F937}", true);
+    var calcEl = document.querySelector(".calc");
+    restart(calcEl, "sixseven");
+    setTimeout(function () { calcEl.classList.remove("sixseven"); }, 1050);
+    fxConfetti(0, window.innerHeight * 0.7, 40, 0.5, -Math.PI / 3, 1.3);
+    fxConfetti(window.innerWidth, window.innerHeight * 0.7, 40, 0.5, -Math.PI * 2 / 3, 1.3);
+  }
+
+  function fxPress(key) {
+    if (key.dataset.action === "equals") airhorn();
+    if (calcScreen.hidden) return;   // = went to the paywall; fxPaywall takes it from here
+
+    var r = key.getBoundingClientRect();
+    var at = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    var digit = key.dataset.digit;
+    lookAt(at.x, at.y);
+
+    combo++;
+    clearTimeout(comboTimer);
+    comboTimer = setTimeout(function () { combo = 0; comboEl.classList.remove("on"); }, 1300);
+
+    if (digit !== undefined) {
+      if (lastDigit === "6" && digit === "7") sixSeven();
+      else addAura(digit === "7" ? 77 : 10, { x: at.x, y: at.y - 30 });
+      lastDigit = digit;
+    } else {
+      lastDigit = null;
+      if (key.dataset.action === "clear") addAura(-10, { x: at.x, y: at.y - 30 }, "(L)");
+    }
+
+    if (calm()) return;
+    var tier = chaosTier();
+    fxConfetti(at.x, at.y, [6, 12, 20, 30][tier - 1], 1.1, -Math.PI / 2, 0.8 + tier * 0.15);
+
+    // Anything that moves a big area is held to once per 400ms, however fast you mash.
+    var now = Date.now();
+    if (digit !== undefined && now - lastGhost >= 400) { lastGhost = now; ghostDigit(digit); }
+    if (now - lastShake >= 400) { lastShake = now; shake(2 + tier * 2); }
+
+    if (combo >= 3) {
+      comboEl.innerHTML = "x" + combo + "<small>" + comboName(combo) + "</small>";
+      comboEl.classList.add("on");
+      restart(comboEl, "bump");
+    }
+    if (combo >= 5 && combo % 5 === 0 && now - lastCallout > 600) {
+      lastCallout = now;
+      callout(pick(CALLOUTS));
+    }
+  }
+
+  /* ---------- vine boom (divide by zero) ---------- */
+
+  var moai = $("moai");
+  var lastMoai = 0;
+
+  function onZero() {
+    boom();
+    addAura(-1000, null, "\u{1F480}");
+    if (calm()) return;
+    var now = Date.now();
+    if (now - lastMoai < 1200) return;
+    lastMoai = now;
+    restart(moai, "go");
+    shake(12);
+  }
+
+  /* ---------- KA-CHING (entering the paywall) ---------- */
+
+  var kaching = $("kaching");
+  var shockwave = $("shockwave");
+  var KACHING = ["KA-CHING! \u{1F4B8}", "FANUM TAX! \u{1F35F}", "W PURCHASE!", "IT'S OVER \u{1F940}", "SKILL ISSUE \u{1F480}"];
+
+  function rollPrice(el) {
+    var unit = el.querySelector("span");
+    var unitHTML = unit ? unit.outerHTML : "";
+    var started = Date.now();
+    var timer = setInterval(function () {
+      if (Date.now() - started > 950) {
+        clearInterval(timer);
+        setBilling($("bill-annual").getAttribute("aria-pressed") === "true" ? "annual" : "monthly");
+        return;
+      }
+      var n = Math.random() * 999999;
+      el.innerHTML = "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + unitHTML;
+    }, 70);
+  }
+
+  function fxPaywall(result) {
+    addAura(-300, null, "(fanum tax \u{1F35F})");
+    if (result === "67") {
+      unlock("result67");
+      setTimeout(function () { callout("6 7 \u{1F937}", true); }, 900);
+    }
+    restart(paywall, "paywall-enter");
+    setTimeout(function () { paywall.classList.remove("paywall-enter"); }, 2000);
+    if (calm()) return;
+    kaching.textContent = pick(KACHING);
+    restart(kaching, "go");
+    restart(shockwave, "go");
+    fxMoneyRain(40);
+    fxConfetti(0, window.innerHeight, 45, 0.35, -Math.PI / 3, 1.5);
+    fxConfetti(window.innerWidth, window.innerHeight, 45, 0.35, -Math.PI * 2 / 3, 1.5);
+    rollPrice($("price-casual"));
+    rollPrice($("price-pro"));
+  }
+
+  $("pay-aura").addEventListener("click", function () {
+    addAura(-67, null, "(broke)");
+    declined("\u{1F5FF} Insufficient aura",
+      "Mathemagician Pro costs 1,000,000 aura. You have " + fmtAura(aura) + ". " +
+      (isFinite(aura) ? "Go farm some aura and come back." : "Okay, that's actually enough. We still don't accept it."));
+  });
+
+  /* ---------- rotating tagline + title wave ---------- */
+
+  var TAGLINES = [
+    "the last calculator you will ever need to pay for™",
+    "no cap, the most bussin calculator in Ohio",
+    "skibidi arithmetic, fr fr",
+    "+1000 aura per digit (terms apply)",
+    "sigma grindset: 0 answers, 100% vibes",
+    "the math is mathing (you just can't see it)",
+    "it's giving… division",
+    "6 7 \u{1F937}"
+  ];
+  var taglineAt = 0;
+
+  setInterval(function () {
+    if (calm()) return;
+    taglineAt = (taglineAt + 1) % TAGLINES.length;
+    $("tagline").textContent = TAGLINES[taglineAt];
+  }, 3500);
+
+  (function splitTitle() {
+    var h = document.querySelector(".title");
+    var text = h.textContent;
+    h.setAttribute("aria-label", text.replace(/ /g, " "));
+    var wrap = document.createElement("span");
+    wrap.setAttribute("aria-hidden", "true");
+    Array.prototype.forEach.call(text, function (ch, i) {
+      var s = document.createElement("span");
+      s.className = "ch";
+      s.style.setProperty("--i", i);
+      s.textContent = ch;
+      wrap.appendChild(s);
+    });
+    h.textContent = "";
+    h.appendChild(wrap);
+  })();
+
+  /* ---------- calm mode: free, because we're not monsters ---------- */
+
+  var calmBtn = $("calm-btn");
+
+  function setCalm(on, quiet) {
+    document.body.classList.toggle("calm-mode", on);
+    calmBtn.setAttribute("aria-pressed", String(on));
+    calmBtn.textContent = on ? "\u{1F92A} Un-calm me" : "\u{1F60C} Calm mode (free)";
+    store.set("calm", on);
+    if (on) {
+      fxParts.length = 0;
+      combo = 0;
+      comboEl.classList.remove("on");
+      if (!quiet) {
+        unlock("calm");
+        addAura(500, null, "(touched grass)");
+      }
+    }
+  }
+
+  calmBtn.addEventListener("click", function () {
+    setCalm(!document.body.classList.contains("calm-mode"));
+  });
+  if (store.get("calm", false) === true) setCalm(true, true);
+
+  /* ---------- ↑↑↓↓←→←→BA ---------- */
+
+  var KONAMI = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "b", "a"];
+  var konamiAt = 0;
+
+  function cheatCode() {
+    unlock("cheater");
+    setChaos(100);
+    addAura(Infinity, null, "\u{1F3AE}");
+    toast("\u{1F3AE}", "Cheat code accepted", "+30 lives. +∞ aura. You still can't see the answer.");
+    if (calm()) return;
+    callout("CHEAT CODE ACCEPTED", true);
+    for (var i = 0; i < 5; i++) {
+      setTimeout(function () {
+        fxFirework(80 + Math.random() * (window.innerWidth - 160), 120 + Math.random() * window.innerHeight * 0.4);
+      }, i * 220);
+    }
+  }
+
+  document.addEventListener("keydown", function (ev) {
+    var k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key;
+    if (k === KONAMI[konamiAt]) konamiAt++;
+    else konamiAt = k === KONAMI[0] ? 1 : 0;
+    if (konamiAt === KONAMI.length) { konamiAt = 0; cheatCode(); }
+  });
+
+  renderAura();
 
   render();
 })();

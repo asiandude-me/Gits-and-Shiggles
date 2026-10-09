@@ -4,9 +4,9 @@ A fake enterprise SaaS company that sells you a calculator, plus the calculator.
 
 The marketing site is calm, tasteful and completely straight-faced. It has a
 pricing table, customer testimonials, a leadership team and a careers page. Then
-you click **Launch app** and it hands you a screaming neon calculator that
-computes your answer, blurs it out behind `RESULT LOCKED 🔒`, and asks you to
-choose a payment plan. The contrast is the joke.
+you click **Launch app** and it hands you a screaming, brainrot-saturated neon
+calculator that computes your answer, fanum taxes it behind `RESULT LOCKED 🔒`,
+and asks you to choose a payment plan. The contrast is the joke.
 
 ## Pages
 
@@ -44,26 +44,48 @@ URLs at *any* depth and relative links would break.)
   it, simply evaluate the expression using a calculator. Calculator sold
   separately.
 
+## What's in the app
+
+- **A real calculator.** Click or type: digits, `+ - * /`, `Enter` for equals,
+  `Backspace` to delete, `C` to clear.
+- **Physics confetti, screen shake and combos** on every press, with callouts
+  like "NUMBERS GO BRRR". Mash hard enough and the brainrot meter hits
+  **MAXIMUM BRAINROT**, which turns on disco mode.
+- **Aura.** It goes up and down with everything you do. Press 6 then 7 and find out.
+- **Googly eyes** on the calculator that watch your cursor.
+- **27 achievements**, kept in a trophy cabinet that remembers them between visits.
+- **Dark patterns, lovingly made:** a cookie banner whose switches turn themselves
+  back on, Gary the account manager in a chat bubble who answers nothing, fake
+  "someone just bought Pro" pop-ups, annual billing that costs more, and free
+  previews that reveal nothing.
+- **The paywall entrance:** KA-CHING (or FANUM TAX), a shockwave, raining cash,
+  slot-machine prices and stamps slamming onto the pricing cards.
+- A Konami code. You know the one.
+
 ## Getting out
 
 There is a way out of the paywall, and it is deliberately hostile: a 7-pixel
 "no thanks" link that runs away from your cursor three times before giving up,
-then three escalating guilt-trip dialogs, then a cancellation progress bar that
-fills to 97% and changes its mind. Survivors return to the calculator wearing a
+then three escalating guilt-trip dialogs, a CAPTCHA that fails you twice no matter
+what, and a cancellation progress bar that fills to 97% and changes its mind. Survivors return to the calculator wearing a
 permanent **FREE TIER — ads enabled, answers disabled** banner.
 
 ## Heads up: the app page is intentionally loud
 
-Scrolling stripes, wobbling buttons, emoji explosions on every keypress, two
-marquees running opposite directions. That's the point. It is loud on purpose
-but not hazardous on purpose:
+Scrolling stripes, wobbling buttons, confetti and screen shake on every keypress,
+disco beams, two marquees running opposite directions. That's the point. It is
+loud on purpose but not hazardous on purpose:
 
 - **Every animation has a period of at least 400ms (under 3Hz)**, and nothing
-  strobes the full viewport — below the photosensitive-seizure threshold.
+  strobes the full viewport — below the photosensitive-seizure threshold. The
+  per-keypress effects that move a big area (screen shake, the zooming digits)
+  are rate-limited to once per 400ms, however fast you mash.
+- **A 😌 Calm mode button**, free and always visible, switches every animation off
+  and stays off on your next visit.
 - **`prefers-reduced-motion` gets a real alternative.** All animation stops, the
   background becomes a static gradient, particles are disabled at the source,
   and the fleeing link becomes an ordinary visible button. Every joke survives as
-  text; only the motion goes.
+  text; only the motion goes. Calm mode applies exactly the same rules.
 - **Sound is muted by default**, behind a button you press on purpose.
 
 ## Accessibility
